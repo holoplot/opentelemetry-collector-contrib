@@ -43,8 +43,9 @@ The available scrapers are:
 | ------------ | ---------------------------- | ------------------------------------------------------ |
 | [cpu]        | All except Mac<sup>[1]</sup> | CPU utilization metrics                                |
 | [disk]       | All except Mac<sup>[1]</sup> | Disk I/O metrics                                       |
-| [load]       | All                          | CPU load metrics                                       |
+| [hardware]   | Linux                        | Hardware sensor metrics                                |
 | [filesystem] | All                          | File System utilization metrics                        |
+| [load]       | All                          | CPU load metrics                                       |
 | [memory]     | All                          | Memory utilization metrics                             |
 | [network]    | All                          | Network interface I/O metrics & TCP connection metrics |
 | [paging]     | All                          | Paging/Swap space utilization and I/O metrics          |
@@ -55,6 +56,7 @@ The available scrapers are:
 [cpu]: ./internal/scraper/cpuscraper/documentation.md
 [disk]: ./internal/scraper/diskscraper/documentation.md
 [filesystem]: ./internal/scraper/filesystemscraper/documentation.md
+[hardware]: ./internal/scraper/hardwarescraper/documentation.md
 [load]: ./internal/scraper/loadscraper/documentation.md
 [memory]: ./internal/scraper/memoryscraper/documentation.md
 [network]: ./internal/scraper/networkscraper/documentation.md
