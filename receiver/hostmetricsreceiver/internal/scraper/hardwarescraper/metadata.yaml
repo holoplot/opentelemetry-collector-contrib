@@ -1,0 +1,50 @@
+type: hardware
+
+status:
+  class: scraper
+  stability:
+    beta: [metrics]
+  distributions: [core, contrib, k8s]
+  codeowners:
+    active: [svenfoo]
+
+sem_conv_version: 1.9.0
+
+attributes:
+  id:
+    description: Identifier for the hardware sensor
+    type: string
+  label:
+    description: Label of the hardware sensor
+    type: string
+
+metrics:
+  hardware.temperature:
+    enabled: true
+    description: Temperature reported by hardware sensor
+    unit: Cel
+    gauge:
+      value_type: double
+    attributes: [id, label]
+
+  hardware.humidity:
+    enabled: true
+    description: Humidity reported by hardware sensor
+    unit: "%"
+    gauge:
+      value_type: double
+    attributes: [id, label]
+
+  hardware.fan.speed:
+    enabled: true
+    description: Fan speed reported by hardware sensor
+    unit: rpm
+    gauge:
+      value_type: int
+    attributes: [id, label]
+
+resource_attributes:
+  name:
+    description: The name of the hardware component
+    type: string
+    enabled: true
