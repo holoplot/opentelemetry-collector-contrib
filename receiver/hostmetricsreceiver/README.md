@@ -49,6 +49,7 @@ The available scrapers are:
 | ------------ | ---------------------------- | ------------------------------------------------------ |
 | [cpu]        | All                          | CPU utilization metrics                                |
 | [disk]       | All                          | Disk I/O metrics                                       |
+| [hardware]   | Linux                        | Hardware sensor metrics                                |
 | [load]       | All                          | CPU load metrics                                       |
 | [filesystem] | All                          | File System utilization metrics                        |
 | [memory]     | All                          | Memory utilization metrics                             |
@@ -61,6 +62,7 @@ The available scrapers are:
 [cpu]: ./internal/scraper/cpuscraper/documentation.md
 [disk]: ./internal/scraper/diskscraper/documentation.md
 [filesystem]: ./internal/scraper/filesystemscraper/documentation.md
+[hardware]: ./internal/scraper/hardwarescraper/documentation.md
 [load]: ./internal/scraper/loadscraper/documentation.md
 [memory]: ./internal/scraper/memoryscraper/documentation.md
 [network]: ./internal/scraper/networkscraper/documentation.md
