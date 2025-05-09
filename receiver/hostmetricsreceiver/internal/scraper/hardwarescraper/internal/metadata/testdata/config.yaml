@@ -1,0 +1,13 @@
+default:
+all_set:
+  metrics:
+    hardware.humidity:
+      enabled: true
+    hardware.temperature:
+      enabled: true
+none_set:
+  metrics:
+    hardware.humidity:
+      enabled: false
+    hardware.temperature:
+      enabled: false

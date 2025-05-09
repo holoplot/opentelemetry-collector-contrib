@@ -1,0 +1,27 @@
+type: hardware
+
+status:
+  class: scraper
+  stability:
+    beta: [metrics]
+  distributions: [core, contrib, k8s]
+  codeowners:
+    active: [svenfoo]
+
+sem_conv_version: 1.9.0
+
+metrics:
+  hardware.temperature:
+    enabled: false
+    description: Temperature reported by hardware sensors
+    unit: Cel
+    gauge:
+      value_type: double
+    attributes: []
+  hardware.humidity:
+    enabled: false
+    description: Humidity reported by hardware sensors
+    unit: "%"
+    gauge:
+      value_type: double
+    attributes: []
