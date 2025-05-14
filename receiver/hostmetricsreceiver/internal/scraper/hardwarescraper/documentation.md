@@ -12,19 +12,9 @@ metrics:
     enabled: false
 ```
 
-## Optional Metrics
-
-The following metrics are not emitted by default. Each of them can be enabled by applying the following configuration:
-
-```yaml
-metrics:
-  <metric_name>:
-    enabled: true
-```
-
 ### hardware.humidity
 
-Humidity reported by hardware sensors
+Humidity reported by hardware sensor
 
 | Unit | Metric Type | Value Type |
 | ---- | ----------- | ---------- |
@@ -32,8 +22,14 @@ Humidity reported by hardware sensors
 
 ### hardware.temperature
 
-Temperature reported by hardware sensors
+Temperature reported by hardware sensor
 
 | Unit | Metric Type | Value Type |
 | ---- | ----------- | ---------- |
 | Cel | Gauge | Double |
+
+## Resource Attributes
+
+| Name | Description | Values | Enabled |
+| ---- | ----------- | ------ | ------- |
+| hardware.chip_name | The name of the hardware sensor chip | Any Str | true |

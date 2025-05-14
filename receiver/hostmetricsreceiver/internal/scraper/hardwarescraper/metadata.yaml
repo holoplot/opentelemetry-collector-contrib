@@ -12,16 +12,22 @@ sem_conv_version: 1.9.0
 
 metrics:
   hardware.temperature:
-    enabled: false
-    description: Temperature reported by hardware sensors
+    enabled: true
+    description: Temperature reported by hardware sensor
     unit: Cel
     gauge:
       value_type: double
     attributes: []
   hardware.humidity:
-    enabled: false
-    description: Humidity reported by hardware sensors
+    enabled: true
+    description: Humidity reported by hardware sensor
     unit: "%"
     gauge:
       value_type: double
     attributes: []
+
+resource_attributes:
+  hardware.chip_name:
+    description: The name of the hardware sensor chip
+    type: string
+    enabled: true

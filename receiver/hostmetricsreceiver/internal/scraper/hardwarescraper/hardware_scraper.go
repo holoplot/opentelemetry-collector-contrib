@@ -7,6 +7,7 @@ import (
 	"context"
 	"os"
 	"path"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -23,69 +24,114 @@ const (
 	hwmonRoot = "/sys/class/hwmon"
 )
 
-type sensor interface {
-	scrape(ctx context.Context, mb *metadata.MetricsBuilder) error
-	mock(func(context.Context, string) (float64, error))
-}
+var hwmonFilenameFormat = regexp.MustCompile(`^(?P<type>[^0-9]+)(?P<id>[0-9]*)?(_(?P<property>.+))?$`)
 
-// reads a temperature sensor from hwmon interface
-type temperatureSensor struct {
-	path string
-	read func(ctx context.Context, path string) (float64, error)
-}
-
-func newTemperatureSensor(chip, name string) *temperatureSensor {
-	return &temperatureSensor{
-		path: path.Join(hwmonRoot, chip, name),
-		read: readsensor,
+// explodeSensorFilename splits a sensor name into <type><num>_<property>.
+func explodeSensorFilename(filename string) (ok bool, sensorType string, sensorNum int, sensorProperty string) {
+	matches := hwmonFilenameFormat.FindStringSubmatch(filename)
+	if len(matches) == 0 {
+		return false, sensorType, sensorNum, sensorProperty
 	}
+	for i, match := range hwmonFilenameFormat.SubexpNames() {
+		if i >= len(matches) {
+			return true, sensorType, sensorNum, sensorProperty
+		}
+		if match == "type" {
+			sensorType = matches[i]
+		}
+		if match == "property" {
+			sensorProperty = matches[i]
+		}
+		if match == "id" && len(matches[i]) > 0 {
+			num, err := strconv.Atoi(matches[i])
+			if err != nil {
+				return false, sensorType, sensorNum, sensorProperty
+			}
+
+			sensorNum = num
+		}
+	}
+	return true, sensorType, sensorNum, sensorProperty
 }
 
-func (v *temperatureSensor) scrape(ctx context.Context, mb *metadata.MetricsBuilder) error {
-	now := pcommon.NewTimestampFromTime(time.Now())
+type chip struct {
+	device   string
+	resource pcommon.Resource
+	sensors  []*sensor
+}
 
-	val, err := v.read(ctx, v.path)
+func newChip(rb *metadata.ResourceBuilder, device string) (*chip, error) {
+	raw, err := os.ReadFile(path.Join(hwmonRoot, device, "name"))
+	if err != nil {
+		return nil, err
+	}
+
+	rb.SetHardwareChipName(strings.Trim(string(raw), "\n"))
+
+	c := &chip{device: device, resource: rb.Emit()}
+
+	entries, _ := os.ReadDir(path.Join(hwmonRoot, device))
+	for _, entry := range entries {
+		if entry.Type().IsRegular() {
+			if s := newSensor(c, entry.Name()); s != nil {
+				c.sensors = append(c.sensors, s)
+			}
+		}
+	}
+
+	return c, nil
+}
+
+func (c *chip) scrape(ctx context.Context, mb *metadata.MetricsBuilder, ts pcommon.Timestamp) error {
+	for _, s := range c.sensors {
+		if err := s.scrape(ctx, mb, ts); err != nil {
+			return err
+		}
+	}
+
+	mb.EmitForResource(metadata.WithResource(c.resource))
+
+	return nil
+}
+
+type sensor struct {
+	path string
+	kind string
+}
+
+func newSensor(chip *chip, name string) *sensor {
+	// TODO: deal with multiple sensors of the same kind
+	if ok, kind, _, prop := explodeSensorFilename(name); ok {
+		switch kind {
+		case "temp", "humidity":
+			if prop == "input" {
+				return &sensor{
+					path: path.Join(hwmonRoot, chip.device, name),
+					kind: kind,
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+func (s *sensor) scrape(ctx context.Context, mb *metadata.MetricsBuilder, ts pcommon.Timestamp) error {
+	val, err := s.read(ctx)
 	if err == nil {
-		mb.RecordHardwareTemperatureDataPoint(now, val)
+		switch s.kind {
+		case "temp":
+			mb.RecordHardwareTemperatureDataPoint(ts, val)
+		case "humidity":
+			mb.RecordHardwareHumidityDataPoint(ts, val)
+		}
 	}
 
 	return err
 }
 
-func (v *temperatureSensor) mock(m func(context.Context, string) (float64, error)) {
-	v.read = m
-}
-
-// reads a humidity sensor from hwmon interface
-type humiditySensor struct {
-	path string
-	read func(ctx context.Context, path string) (float64, error)
-}
-
-func newHumiditySensor(chip, name string) *humiditySensor {
-	return &humiditySensor{
-		path: path.Join(hwmonRoot, chip, name),
-		read: readsensor,
-	}
-}
-
-func (v *humiditySensor) scrape(ctx context.Context, mb *metadata.MetricsBuilder) error {
-	now := pcommon.NewTimestampFromTime(time.Now())
-
-	val, err := v.read(ctx, v.path)
-	if err == nil {
-		mb.RecordHardwareHumidityDataPoint(now, val)
-	}
-
-	return err
-}
-
-func (v *humiditySensor) mock(m func(context.Context, string) (float64, error)) {
-	v.read = m
-}
-
-func readsensor(_ context.Context, path string) (float64, error) {
-	raw, err := os.ReadFile(path)
+func (s *sensor) read(_ context.Context) (float64, error) {
+	raw, err := os.ReadFile(s.path)
 	if err != nil {
 		return 0, err
 	}
@@ -103,8 +149,7 @@ type hardwareScraper struct {
 	settings scraper.Settings
 	config   *Config
 	mb       *metadata.MetricsBuilder
-
-	sensors []sensor
+	chips    []*chip
 }
 
 // newHardwareScraper creates a scraper for hardware metrics
@@ -112,21 +157,31 @@ func newHardwareScraper(_ context.Context, settings scraper.Settings, cfg *Confi
 	return &hardwareScraper{
 		settings: settings,
 		config:   cfg,
-		sensors: []sensor{
-			newTemperatureSensor("hwmon0", "temp1_input"),
-			newHumiditySensor("hwmon0", "humidity1_input"),
-		},
 	}
 }
 
 func (s *hardwareScraper) start(_ context.Context, _ component.Host) error {
 	s.mb = metadata.NewMetricsBuilder(s.config.MetricsBuilderConfig, s.settings)
+
+	rb := s.mb.NewResourceBuilder()
+
+	entries, _ := os.ReadDir(hwmonRoot)
+	for _, entry := range entries {
+		if entry.IsDir() {
+			if c, err := newChip(rb, entry.Name()); err == nil {
+				s.chips = append(s.chips, c)
+			}
+		}
+	}
+
 	return nil
 }
 
 func (s *hardwareScraper) scrape(ctx context.Context) (pmetric.Metrics, error) {
-	for _, sensor := range s.sensors {
-		if err := sensor.scrape(ctx, s.mb); err != nil {
+	now := pcommon.NewTimestampFromTime(time.Now())
+
+	for _, c := range s.chips {
+		if err := c.scrape(ctx, s.mb, now); err != nil {
 			return pmetric.NewMetrics(), err
 		}
 	}

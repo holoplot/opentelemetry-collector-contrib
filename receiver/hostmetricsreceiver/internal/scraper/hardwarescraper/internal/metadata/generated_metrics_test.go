@@ -42,6 +42,15 @@ func TestMetricsBuilder(t *testing.T) {
 			resAttrsSet: testDataSetNone,
 			expectEmpty: true,
 		},
+		{
+			name:        "filter_set_include",
+			resAttrsSet: testDataSetAll,
+		},
+		{
+			name:        "filter_set_exclude",
+			resAttrsSet: testDataSetAll,
+			expectEmpty: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -59,13 +68,17 @@ func TestMetricsBuilder(t *testing.T) {
 			defaultMetricsCount := 0
 			allMetricsCount := 0
 
+			defaultMetricsCount++
 			allMetricsCount++
 			mb.RecordHardwareHumidityDataPoint(ts, 1)
 
+			defaultMetricsCount++
 			allMetricsCount++
 			mb.RecordHardwareTemperatureDataPoint(ts, 1)
 
-			res := pcommon.NewResource()
+			rb := mb.NewResourceBuilder()
+			rb.SetHardwareChipName("hardware.chip_name-val")
+			res := rb.Emit()
 			metrics := mb.Emit(WithResource(res))
 
 			if tt.expectEmpty {
@@ -92,7 +105,7 @@ func TestMetricsBuilder(t *testing.T) {
 					validatedMetrics["hardware.humidity"] = true
 					assert.Equal(t, pmetric.MetricTypeGauge, ms.At(i).Type())
 					assert.Equal(t, 1, ms.At(i).Gauge().DataPoints().Len())
-					assert.Equal(t, "Humidity reported by hardware sensors", ms.At(i).Description())
+					assert.Equal(t, "Humidity reported by hardware sensor", ms.At(i).Description())
 					assert.Equal(t, "%", ms.At(i).Unit())
 					dp := ms.At(i).Gauge().DataPoints().At(0)
 					assert.Equal(t, start, dp.StartTimestamp())
@@ -104,7 +117,7 @@ func TestMetricsBuilder(t *testing.T) {
 					validatedMetrics["hardware.temperature"] = true
 					assert.Equal(t, pmetric.MetricTypeGauge, ms.At(i).Type())
 					assert.Equal(t, 1, ms.At(i).Gauge().DataPoints().Len())
-					assert.Equal(t, "Temperature reported by hardware sensors", ms.At(i).Description())
+					assert.Equal(t, "Temperature reported by hardware sensor", ms.At(i).Description())
 					assert.Equal(t, "Cel", ms.At(i).Unit())
 					dp := ms.At(i).Gauge().DataPoints().At(0)
 					assert.Equal(t, start, dp.StartTimestamp())

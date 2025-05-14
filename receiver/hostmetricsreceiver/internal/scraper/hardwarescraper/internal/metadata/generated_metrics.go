@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/filter"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/scraper"
@@ -39,7 +40,7 @@ type metricHardwareHumidity struct {
 // init fills hardware.humidity metric with initial data.
 func (m *metricHardwareHumidity) init() {
 	m.data.SetName("hardware.humidity")
-	m.data.SetDescription("Humidity reported by hardware sensors")
+	m.data.SetDescription("Humidity reported by hardware sensor")
 	m.data.SetUnit("%")
 	m.data.SetEmptyGauge()
 }
@@ -88,7 +89,7 @@ type metricHardwareTemperature struct {
 // init fills hardware.temperature metric with initial data.
 func (m *metricHardwareTemperature) init() {
 	m.data.SetName("hardware.temperature")
-	m.data.SetDescription("Temperature reported by hardware sensors")
+	m.data.SetDescription("Temperature reported by hardware sensor")
 	m.data.SetUnit("Cel")
 	m.data.SetEmptyGauge()
 }
@@ -131,13 +132,15 @@ func newMetricHardwareTemperature(cfg MetricConfig) metricHardwareTemperature {
 // MetricsBuilder provides an interface for scrapers to report metrics while taking care of all the transformations
 // required to produce metric representation defined in metadata and user config.
 type MetricsBuilder struct {
-	config                    MetricsBuilderConfig // config of the metrics builder.
-	startTime                 pcommon.Timestamp    // start time that will be applied to all recorded data points.
-	metricsCapacity           int                  // maximum observed number of metrics per resource.
-	metricsBuffer             pmetric.Metrics      // accumulates metrics data before emitting.
-	buildInfo                 component.BuildInfo  // contains version information.
-	metricHardwareHumidity    metricHardwareHumidity
-	metricHardwareTemperature metricHardwareTemperature
+	config                         MetricsBuilderConfig // config of the metrics builder.
+	startTime                      pcommon.Timestamp    // start time that will be applied to all recorded data points.
+	metricsCapacity                int                  // maximum observed number of metrics per resource.
+	metricsBuffer                  pmetric.Metrics      // accumulates metrics data before emitting.
+	buildInfo                      component.BuildInfo  // contains version information.
+	resourceAttributeIncludeFilter map[string]filter.Filter
+	resourceAttributeExcludeFilter map[string]filter.Filter
+	metricHardwareHumidity         metricHardwareHumidity
+	metricHardwareTemperature      metricHardwareTemperature
 }
 
 // MetricBuilderOption applies changes to default metrics builder.
@@ -159,18 +162,31 @@ func WithStartTime(startTime pcommon.Timestamp) MetricBuilderOption {
 }
 func NewMetricsBuilder(mbc MetricsBuilderConfig, settings scraper.Settings, options ...MetricBuilderOption) *MetricsBuilder {
 	mb := &MetricsBuilder{
-		config:                    mbc,
-		startTime:                 pcommon.NewTimestampFromTime(time.Now()),
-		metricsBuffer:             pmetric.NewMetrics(),
-		buildInfo:                 settings.BuildInfo,
-		metricHardwareHumidity:    newMetricHardwareHumidity(mbc.Metrics.HardwareHumidity),
-		metricHardwareTemperature: newMetricHardwareTemperature(mbc.Metrics.HardwareTemperature),
+		config:                         mbc,
+		startTime:                      pcommon.NewTimestampFromTime(time.Now()),
+		metricsBuffer:                  pmetric.NewMetrics(),
+		buildInfo:                      settings.BuildInfo,
+		metricHardwareHumidity:         newMetricHardwareHumidity(mbc.Metrics.HardwareHumidity),
+		metricHardwareTemperature:      newMetricHardwareTemperature(mbc.Metrics.HardwareTemperature),
+		resourceAttributeIncludeFilter: make(map[string]filter.Filter),
+		resourceAttributeExcludeFilter: make(map[string]filter.Filter),
+	}
+	if mbc.ResourceAttributes.HardwareChipName.MetricsInclude != nil {
+		mb.resourceAttributeIncludeFilter["hardware.chip_name"] = filter.CreateFilter(mbc.ResourceAttributes.HardwareChipName.MetricsInclude)
+	}
+	if mbc.ResourceAttributes.HardwareChipName.MetricsExclude != nil {
+		mb.resourceAttributeExcludeFilter["hardware.chip_name"] = filter.CreateFilter(mbc.ResourceAttributes.HardwareChipName.MetricsExclude)
 	}
 
 	for _, op := range options {
 		op.apply(mb)
 	}
 	return mb
+}
+
+// NewResourceBuilder returns a new resource builder that should be used to build a resource associated with for the emitted metrics.
+func (mb *MetricsBuilder) NewResourceBuilder() *ResourceBuilder {
+	return NewResourceBuilder(mb.config.ResourceAttributes)
 }
 
 // updateCapacity updates max length of metrics and resource attributes that will be used for the slice capacity.
@@ -236,6 +252,16 @@ func (mb *MetricsBuilder) EmitForResource(options ...ResourceMetricsOption) {
 
 	for _, op := range options {
 		op.apply(rm)
+	}
+	for attr, filter := range mb.resourceAttributeIncludeFilter {
+		if val, ok := rm.Resource().Attributes().Get(attr); ok && !filter.Matches(val.AsString()) {
+			return
+		}
+	}
+	for attr, filter := range mb.resourceAttributeExcludeFilter {
+		if val, ok := rm.Resource().Attributes().Get(attr); ok && filter.Matches(val.AsString()) {
+			return
+		}
 	}
 
 	if ils.Metrics().Len() > 0 {
