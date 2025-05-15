@@ -55,6 +55,15 @@ func explodeSensorFilename(filename string) (ok bool, sensorType string, sensorN
 	return true, sensorType, sensorNum, sensorProperty
 }
 
+func ReadFile(filename string) (string, error) {
+	bytes, err := os.ReadFile(filename)
+	if err != nil {
+		return "", err
+	}
+
+	return strings.Trim(string(bytes), "\n"), nil
+}
+
 type chip struct {
 	device   string
 	resource pcommon.Resource
@@ -62,12 +71,12 @@ type chip struct {
 }
 
 func newChip(rb *metadata.ResourceBuilder, device string) (*chip, error) {
-	raw, err := os.ReadFile(path.Join(hwmonRoot, device, "name"))
+	name, err := ReadFile(path.Join(hwmonRoot, device, "name"))
 	if err != nil {
 		return nil, err
 	}
 
-	rb.SetName(strings.Trim(string(raw), "\n"))
+	rb.SetName(name)
 
 	c := &chip{device: device, resource: rb.Emit()}
 
@@ -123,7 +132,7 @@ func (s *sensor) scrape(ctx context.Context, mb *metadata.MetricsBuilder, ts pco
 		return 0.001 * float64(v)
 	}
 
-	val, err := s.read(ctx)
+	val, err := s.readValue(ctx)
 	if err == nil {
 		switch s.kind {
 		case "fan":
@@ -138,13 +147,13 @@ func (s *sensor) scrape(ctx context.Context, mb *metadata.MetricsBuilder, ts pco
 	return err
 }
 
-func (s *sensor) read(_ context.Context) (int64, error) {
-	raw, err := os.ReadFile(s.path)
+func (s *sensor) readValue(_ context.Context) (int64, error) {
+	str, err := ReadFile(s.path)
 	if err != nil {
 		return 0, err
 	}
 
-	val, err := strconv.ParseInt(strings.Trim(string(raw), "\n"), 10, 32)
+	val, err := strconv.ParseInt(str, 10, 32)
 	if err != nil {
 		return 0, err
 	}
