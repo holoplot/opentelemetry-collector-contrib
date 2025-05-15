@@ -104,7 +104,7 @@ type sensor struct {
 func newSensor(chip *chip, name string) *sensor {
 	if ok, kind, num, prop := explodeSensorFilename(name); ok {
 		switch kind {
-		case "temp", "humidity":
+		case "fan", "humidity", "temp":
 			if prop == "input" {
 				return &sensor{
 					path: path.Join(hwmonRoot, chip.device, name),
@@ -119,20 +119,26 @@ func newSensor(chip *chip, name string) *sensor {
 }
 
 func (s *sensor) scrape(ctx context.Context, mb *metadata.MetricsBuilder, ts pcommon.Timestamp) error {
+	fromMilli := func(v int64) float64 {
+		return 0.001 * float64(v)
+	}
+
 	val, err := s.read(ctx)
 	if err == nil {
 		switch s.kind {
-		case "temp":
-			mb.RecordHardwareTemperatureDataPoint(ts, val, s.id)
+		case "fan":
+			mb.RecordHardwareFanSpeedDataPoint(ts, val, s.id)
 		case "humidity":
-			mb.RecordHardwareHumidityDataPoint(ts, val, s.id)
+			mb.RecordHardwareHumidityDataPoint(ts, fromMilli(val), s.id)
+		case "temp":
+			mb.RecordHardwareTemperatureDataPoint(ts, fromMilli(val), s.id)
 		}
 	}
 
 	return err
 }
 
-func (s *sensor) read(_ context.Context) (float64, error) {
+func (s *sensor) read(_ context.Context) (int64, error) {
 	raw, err := os.ReadFile(s.path)
 	if err != nil {
 		return 0, err
@@ -143,7 +149,7 @@ func (s *sensor) read(_ context.Context) (float64, error) {
 		return 0, err
 	}
 
-	return float64(val) / 1000, nil
+	return val, nil
 }
 
 // scraper for hardware metrics

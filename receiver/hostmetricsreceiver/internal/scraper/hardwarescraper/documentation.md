@@ -12,6 +12,20 @@ metrics:
     enabled: false
 ```
 
+### hardware.fan.speed
+
+Fan speed reported by hardware sensor
+
+| Unit | Metric Type | Value Type |
+| ---- | ----------- | ---------- |
+| rpm | Gauge | Int |
+
+#### Attributes
+
+| Name | Description | Values |
+| ---- | ----------- | ------ |
+| id | Identifier for the hardware sensor | Any Str |
+
 ### hardware.humidity
 
 Humidity reported by hardware sensor

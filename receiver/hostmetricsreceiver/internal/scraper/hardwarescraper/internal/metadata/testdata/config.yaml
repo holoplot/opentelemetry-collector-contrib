@@ -1,6 +1,8 @@
 default:
 all_set:
   metrics:
+    hardware.fan.speed:
+      enabled: true
     hardware.humidity:
       enabled: true
     hardware.temperature:
@@ -10,6 +12,8 @@ all_set:
       enabled: true
 none_set:
   metrics:
+    hardware.fan.speed:
+      enabled: false
     hardware.humidity:
       enabled: false
     hardware.temperature:

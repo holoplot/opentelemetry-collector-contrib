@@ -32,6 +32,14 @@ metrics:
       value_type: double
     attributes: [id]
 
+  hardware.fan.speed:
+    enabled: true
+    description: Fan speed reported by hardware sensor
+    unit: rpm
+    gauge:
+      value_type: int
+    attributes: [id]
+
 resource_attributes:
   name:
     description: The name of the hardware component

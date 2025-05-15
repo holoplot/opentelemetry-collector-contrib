@@ -70,6 +70,10 @@ func TestMetricsBuilder(t *testing.T) {
 
 			defaultMetricsCount++
 			allMetricsCount++
+			mb.RecordHardwareFanSpeedDataPoint(ts, 1, "id-val")
+
+			defaultMetricsCount++
+			allMetricsCount++
 			mb.RecordHardwareHumidityDataPoint(ts, 1, "id-val")
 
 			defaultMetricsCount++
@@ -100,6 +104,21 @@ func TestMetricsBuilder(t *testing.T) {
 			validatedMetrics := make(map[string]bool)
 			for i := 0; i < ms.Len(); i++ {
 				switch ms.At(i).Name() {
+				case "hardware.fan.speed":
+					assert.False(t, validatedMetrics["hardware.fan.speed"], "Found a duplicate in the metrics slice: hardware.fan.speed")
+					validatedMetrics["hardware.fan.speed"] = true
+					assert.Equal(t, pmetric.MetricTypeGauge, ms.At(i).Type())
+					assert.Equal(t, 1, ms.At(i).Gauge().DataPoints().Len())
+					assert.Equal(t, "Fan speed reported by hardware sensor", ms.At(i).Description())
+					assert.Equal(t, "rpm", ms.At(i).Unit())
+					dp := ms.At(i).Gauge().DataPoints().At(0)
+					assert.Equal(t, start, dp.StartTimestamp())
+					assert.Equal(t, ts, dp.Timestamp())
+					assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
+					assert.Equal(t, int64(1), dp.IntValue())
+					attrVal, ok := dp.Attributes().Get("id")
+					assert.True(t, ok)
+					assert.Equal(t, "id-val", attrVal.Str())
 				case "hardware.humidity":
 					assert.False(t, validatedMetrics["hardware.humidity"], "Found a duplicate in the metrics slice: hardware.humidity")
 					validatedMetrics["hardware.humidity"] = true

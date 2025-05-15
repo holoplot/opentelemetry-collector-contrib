@@ -14,6 +14,9 @@ import (
 )
 
 var MetricsInfo = metricsInfo{
+	HardwareFanSpeed: metricInfo{
+		Name: "hardware.fan.speed",
+	},
 	HardwareHumidity: metricInfo{
 		Name: "hardware.humidity",
 	},
@@ -23,12 +26,64 @@ var MetricsInfo = metricsInfo{
 }
 
 type metricsInfo struct {
+	HardwareFanSpeed    metricInfo
 	HardwareHumidity    metricInfo
 	HardwareTemperature metricInfo
 }
 
 type metricInfo struct {
 	Name string
+}
+
+type metricHardwareFanSpeed struct {
+	data     pmetric.Metric // data buffer for generated metric.
+	config   MetricConfig   // metric config provided by user.
+	capacity int            // max observed number of data points added to the metric.
+}
+
+// init fills hardware.fan.speed metric with initial data.
+func (m *metricHardwareFanSpeed) init() {
+	m.data.SetName("hardware.fan.speed")
+	m.data.SetDescription("Fan speed reported by hardware sensor")
+	m.data.SetUnit("rpm")
+	m.data.SetEmptyGauge()
+	m.data.Gauge().DataPoints().EnsureCapacity(m.capacity)
+}
+
+func (m *metricHardwareFanSpeed) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64, idAttributeValue string) {
+	if !m.config.Enabled {
+		return
+	}
+	dp := m.data.Gauge().DataPoints().AppendEmpty()
+	dp.SetStartTimestamp(start)
+	dp.SetTimestamp(ts)
+	dp.SetIntValue(val)
+	dp.Attributes().PutStr("id", idAttributeValue)
+}
+
+// updateCapacity saves max length of data point slices that will be used for the slice capacity.
+func (m *metricHardwareFanSpeed) updateCapacity() {
+	if m.data.Gauge().DataPoints().Len() > m.capacity {
+		m.capacity = m.data.Gauge().DataPoints().Len()
+	}
+}
+
+// emit appends recorded metric data to a metrics slice and prepares it for recording another set of data points.
+func (m *metricHardwareFanSpeed) emit(metrics pmetric.MetricSlice) {
+	if m.config.Enabled && m.data.Gauge().DataPoints().Len() > 0 {
+		m.updateCapacity()
+		m.data.MoveTo(metrics.AppendEmpty())
+		m.init()
+	}
+}
+
+func newMetricHardwareFanSpeed(cfg MetricConfig) metricHardwareFanSpeed {
+	m := metricHardwareFanSpeed{config: cfg}
+	if cfg.Enabled {
+		m.data = pmetric.NewMetric()
+		m.init()
+	}
+	return m
 }
 
 type metricHardwareHumidity struct {
@@ -143,6 +198,7 @@ type MetricsBuilder struct {
 	buildInfo                      component.BuildInfo  // contains version information.
 	resourceAttributeIncludeFilter map[string]filter.Filter
 	resourceAttributeExcludeFilter map[string]filter.Filter
+	metricHardwareFanSpeed         metricHardwareFanSpeed
 	metricHardwareHumidity         metricHardwareHumidity
 	metricHardwareTemperature      metricHardwareTemperature
 }
@@ -170,6 +226,7 @@ func NewMetricsBuilder(mbc MetricsBuilderConfig, settings scraper.Settings, opti
 		startTime:                      pcommon.NewTimestampFromTime(time.Now()),
 		metricsBuffer:                  pmetric.NewMetrics(),
 		buildInfo:                      settings.BuildInfo,
+		metricHardwareFanSpeed:         newMetricHardwareFanSpeed(mbc.Metrics.HardwareFanSpeed),
 		metricHardwareHumidity:         newMetricHardwareHumidity(mbc.Metrics.HardwareHumidity),
 		metricHardwareTemperature:      newMetricHardwareTemperature(mbc.Metrics.HardwareTemperature),
 		resourceAttributeIncludeFilter: make(map[string]filter.Filter),
@@ -251,6 +308,7 @@ func (mb *MetricsBuilder) EmitForResource(options ...ResourceMetricsOption) {
 	ils.Scope().SetName(ScopeName)
 	ils.Scope().SetVersion(mb.buildInfo.Version)
 	ils.Metrics().EnsureCapacity(mb.metricsCapacity)
+	mb.metricHardwareFanSpeed.emit(ils.Metrics())
 	mb.metricHardwareHumidity.emit(ils.Metrics())
 	mb.metricHardwareTemperature.emit(ils.Metrics())
 
@@ -282,6 +340,11 @@ func (mb *MetricsBuilder) Emit(options ...ResourceMetricsOption) pmetric.Metrics
 	metrics := mb.metricsBuffer
 	mb.metricsBuffer = pmetric.NewMetrics()
 	return metrics
+}
+
+// RecordHardwareFanSpeedDataPoint adds a data point to hardware.fan.speed metric.
+func (mb *MetricsBuilder) RecordHardwareFanSpeedDataPoint(ts pcommon.Timestamp, val int64, idAttributeValue string) {
+	mb.metricHardwareFanSpeed.recordDataPoint(mb.startTime, ts, val, idAttributeValue)
 }
 
 // RecordHardwareHumidityDataPoint adds a data point to hardware.humidity metric.

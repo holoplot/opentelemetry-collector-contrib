@@ -28,12 +28,16 @@ func (ms *MetricConfig) Unmarshal(parser *confmap.Conf) error {
 
 // MetricsConfig provides config for hardware metrics.
 type MetricsConfig struct {
+	HardwareFanSpeed    MetricConfig `mapstructure:"hardware.fan.speed"`
 	HardwareHumidity    MetricConfig `mapstructure:"hardware.humidity"`
 	HardwareTemperature MetricConfig `mapstructure:"hardware.temperature"`
 }
 
 func DefaultMetricsConfig() MetricsConfig {
 	return MetricsConfig{
+		HardwareFanSpeed: MetricConfig{
+			Enabled: true,
+		},
 		HardwareHumidity: MetricConfig{
 			Enabled: true,
 		},

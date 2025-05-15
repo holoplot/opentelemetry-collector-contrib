@@ -25,6 +25,7 @@ func TestMetricsBuilderConfig(t *testing.T) {
 			name: "all_set",
 			want: MetricsBuilderConfig{
 				Metrics: MetricsConfig{
+					HardwareFanSpeed:    MetricConfig{Enabled: true},
 					HardwareHumidity:    MetricConfig{Enabled: true},
 					HardwareTemperature: MetricConfig{Enabled: true},
 				},
@@ -37,6 +38,7 @@ func TestMetricsBuilderConfig(t *testing.T) {
 			name: "none_set",
 			want: MetricsBuilderConfig{
 				Metrics: MetricsConfig{
+					HardwareFanSpeed:    MetricConfig{Enabled: false},
 					HardwareHumidity:    MetricConfig{Enabled: false},
 					HardwareTemperature: MetricConfig{Enabled: false},
 				},
