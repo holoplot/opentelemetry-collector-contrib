@@ -50,7 +50,7 @@ func (m *metricHardwareFanSpeed) init() {
 	m.data.Gauge().DataPoints().EnsureCapacity(m.capacity)
 }
 
-func (m *metricHardwareFanSpeed) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64, idAttributeValue string) {
+func (m *metricHardwareFanSpeed) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64, idAttributeValue string, labelAttributeValue string) {
 	if !m.config.Enabled {
 		return
 	}
@@ -59,6 +59,7 @@ func (m *metricHardwareFanSpeed) recordDataPoint(start pcommon.Timestamp, ts pco
 	dp.SetTimestamp(ts)
 	dp.SetIntValue(val)
 	dp.Attributes().PutStr("id", idAttributeValue)
+	dp.Attributes().PutStr("label", labelAttributeValue)
 }
 
 // updateCapacity saves max length of data point slices that will be used for the slice capacity.
@@ -101,7 +102,7 @@ func (m *metricHardwareHumidity) init() {
 	m.data.Gauge().DataPoints().EnsureCapacity(m.capacity)
 }
 
-func (m *metricHardwareHumidity) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val float64, idAttributeValue string) {
+func (m *metricHardwareHumidity) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val float64, idAttributeValue string, labelAttributeValue string) {
 	if !m.config.Enabled {
 		return
 	}
@@ -110,6 +111,7 @@ func (m *metricHardwareHumidity) recordDataPoint(start pcommon.Timestamp, ts pco
 	dp.SetTimestamp(ts)
 	dp.SetDoubleValue(val)
 	dp.Attributes().PutStr("id", idAttributeValue)
+	dp.Attributes().PutStr("label", labelAttributeValue)
 }
 
 // updateCapacity saves max length of data point slices that will be used for the slice capacity.
@@ -152,7 +154,7 @@ func (m *metricHardwareTemperature) init() {
 	m.data.Gauge().DataPoints().EnsureCapacity(m.capacity)
 }
 
-func (m *metricHardwareTemperature) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val float64, idAttributeValue string) {
+func (m *metricHardwareTemperature) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val float64, idAttributeValue string, labelAttributeValue string) {
 	if !m.config.Enabled {
 		return
 	}
@@ -161,6 +163,7 @@ func (m *metricHardwareTemperature) recordDataPoint(start pcommon.Timestamp, ts 
 	dp.SetTimestamp(ts)
 	dp.SetDoubleValue(val)
 	dp.Attributes().PutStr("id", idAttributeValue)
+	dp.Attributes().PutStr("label", labelAttributeValue)
 }
 
 // updateCapacity saves max length of data point slices that will be used for the slice capacity.
@@ -343,18 +346,18 @@ func (mb *MetricsBuilder) Emit(options ...ResourceMetricsOption) pmetric.Metrics
 }
 
 // RecordHardwareFanSpeedDataPoint adds a data point to hardware.fan.speed metric.
-func (mb *MetricsBuilder) RecordHardwareFanSpeedDataPoint(ts pcommon.Timestamp, val int64, idAttributeValue string) {
-	mb.metricHardwareFanSpeed.recordDataPoint(mb.startTime, ts, val, idAttributeValue)
+func (mb *MetricsBuilder) RecordHardwareFanSpeedDataPoint(ts pcommon.Timestamp, val int64, idAttributeValue string, labelAttributeValue string) {
+	mb.metricHardwareFanSpeed.recordDataPoint(mb.startTime, ts, val, idAttributeValue, labelAttributeValue)
 }
 
 // RecordHardwareHumidityDataPoint adds a data point to hardware.humidity metric.
-func (mb *MetricsBuilder) RecordHardwareHumidityDataPoint(ts pcommon.Timestamp, val float64, idAttributeValue string) {
-	mb.metricHardwareHumidity.recordDataPoint(mb.startTime, ts, val, idAttributeValue)
+func (mb *MetricsBuilder) RecordHardwareHumidityDataPoint(ts pcommon.Timestamp, val float64, idAttributeValue string, labelAttributeValue string) {
+	mb.metricHardwareHumidity.recordDataPoint(mb.startTime, ts, val, idAttributeValue, labelAttributeValue)
 }
 
 // RecordHardwareTemperatureDataPoint adds a data point to hardware.temperature metric.
-func (mb *MetricsBuilder) RecordHardwareTemperatureDataPoint(ts pcommon.Timestamp, val float64, idAttributeValue string) {
-	mb.metricHardwareTemperature.recordDataPoint(mb.startTime, ts, val, idAttributeValue)
+func (mb *MetricsBuilder) RecordHardwareTemperatureDataPoint(ts pcommon.Timestamp, val float64, idAttributeValue string, labelAttributeValue string) {
+	mb.metricHardwareTemperature.recordDataPoint(mb.startTime, ts, val, idAttributeValue, labelAttributeValue)
 }
 
 // Reset resets metrics builder to its initial state. It should be used when external metrics source is restarted,

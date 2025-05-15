@@ -70,15 +70,15 @@ func TestMetricsBuilder(t *testing.T) {
 
 			defaultMetricsCount++
 			allMetricsCount++
-			mb.RecordHardwareFanSpeedDataPoint(ts, 1, "id-val")
+			mb.RecordHardwareFanSpeedDataPoint(ts, 1, "id-val", "label-val")
 
 			defaultMetricsCount++
 			allMetricsCount++
-			mb.RecordHardwareHumidityDataPoint(ts, 1, "id-val")
+			mb.RecordHardwareHumidityDataPoint(ts, 1, "id-val", "label-val")
 
 			defaultMetricsCount++
 			allMetricsCount++
-			mb.RecordHardwareTemperatureDataPoint(ts, 1, "id-val")
+			mb.RecordHardwareTemperatureDataPoint(ts, 1, "id-val", "label-val")
 
 			rb := mb.NewResourceBuilder()
 			rb.SetName("name-val")
@@ -119,6 +119,9 @@ func TestMetricsBuilder(t *testing.T) {
 					attrVal, ok := dp.Attributes().Get("id")
 					assert.True(t, ok)
 					assert.Equal(t, "id-val", attrVal.Str())
+					attrVal, ok = dp.Attributes().Get("label")
+					assert.True(t, ok)
+					assert.Equal(t, "label-val", attrVal.Str())
 				case "hardware.humidity":
 					assert.False(t, validatedMetrics["hardware.humidity"], "Found a duplicate in the metrics slice: hardware.humidity")
 					validatedMetrics["hardware.humidity"] = true
@@ -134,6 +137,9 @@ func TestMetricsBuilder(t *testing.T) {
 					attrVal, ok := dp.Attributes().Get("id")
 					assert.True(t, ok)
 					assert.Equal(t, "id-val", attrVal.Str())
+					attrVal, ok = dp.Attributes().Get("label")
+					assert.True(t, ok)
+					assert.Equal(t, "label-val", attrVal.Str())
 				case "hardware.temperature":
 					assert.False(t, validatedMetrics["hardware.temperature"], "Found a duplicate in the metrics slice: hardware.temperature")
 					validatedMetrics["hardware.temperature"] = true
@@ -149,6 +155,9 @@ func TestMetricsBuilder(t *testing.T) {
 					attrVal, ok := dp.Attributes().Get("id")
 					assert.True(t, ok)
 					assert.Equal(t, "id-val", attrVal.Str())
+					attrVal, ok = dp.Attributes().Get("label")
+					assert.True(t, ok)
+					assert.Equal(t, "label-val", attrVal.Str())
 				}
 			}
 		})

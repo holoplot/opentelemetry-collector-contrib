@@ -25,6 +25,7 @@ Fan speed reported by hardware sensor
 | Name | Description | Values |
 | ---- | ----------- | ------ |
 | id | Identifier for the hardware sensor | Any Str |
+| label | Label of the hardware sensor | Any Str |
 
 ### hardware.humidity
 
@@ -39,6 +40,7 @@ Humidity reported by hardware sensor
 | Name | Description | Values |
 | ---- | ----------- | ------ |
 | id | Identifier for the hardware sensor | Any Str |
+| label | Label of the hardware sensor | Any Str |
 
 ### hardware.temperature
 
@@ -53,6 +55,7 @@ Temperature reported by hardware sensor
 | Name | Description | Values |
 | ---- | ----------- | ------ |
 | id | Identifier for the hardware sensor | Any Str |
+| label | Label of the hardware sensor | Any Str |
 
 ## Resource Attributes
 

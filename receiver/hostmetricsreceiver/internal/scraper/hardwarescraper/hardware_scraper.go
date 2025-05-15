@@ -105,26 +105,36 @@ func (c *chip) scrape(ctx context.Context, mb *metadata.MetricsBuilder, ts pcomm
 }
 
 type sensor struct {
-	path string
-	kind string
-	id   string
+	path  string
+	kind  string
+	id    string
+	label string
 }
 
 func newSensor(chip *chip, name string) *sensor {
+	var s *sensor
+
 	if ok, kind, num, prop := explodeSensorFilename(name); ok {
 		switch kind {
 		case "fan", "humidity", "temp":
 			if prop == "input" {
-				return &sensor{
+				s = &sensor{
 					path: path.Join(hwmonRoot, chip.device, name),
 					kind: kind,
 					id:   fmt.Sprintf("%s_%s%d", chip.device, kind, num),
 				}
 			}
 		}
+
+		if s != nil {
+			filename := path.Join(hwmonRoot, chip.device, kind+"_label")
+			if label, err := ReadFile(filename); err != nil {
+				s.label = label
+			}
+		}
 	}
 
-	return nil
+	return s
 }
 
 func (s *sensor) scrape(ctx context.Context, mb *metadata.MetricsBuilder, ts pcommon.Timestamp) error {
@@ -136,11 +146,11 @@ func (s *sensor) scrape(ctx context.Context, mb *metadata.MetricsBuilder, ts pco
 	if err == nil {
 		switch s.kind {
 		case "fan":
-			mb.RecordHardwareFanSpeedDataPoint(ts, val, s.id)
+			mb.RecordHardwareFanSpeedDataPoint(ts, val, s.id, s.label)
 		case "humidity":
-			mb.RecordHardwareHumidityDataPoint(ts, fromMilli(val), s.id)
+			mb.RecordHardwareHumidityDataPoint(ts, fromMilli(val), s.id, s.label)
 		case "temp":
-			mb.RecordHardwareTemperatureDataPoint(ts, fromMilli(val), s.id)
+			mb.RecordHardwareTemperatureDataPoint(ts, fromMilli(val), s.id, s.label)
 		}
 	}
 
