@@ -20,6 +20,12 @@ Humidity reported by hardware sensor
 | ---- | ----------- | ---------- |
 | % | Gauge | Double |
 
+#### Attributes
+
+| Name | Description | Values |
+| ---- | ----------- | ------ |
+| id | Identifier for the hardware sensor | Any Str |
+
 ### hardware.temperature
 
 Temperature reported by hardware sensor
@@ -28,8 +34,14 @@ Temperature reported by hardware sensor
 | ---- | ----------- | ---------- |
 | Cel | Gauge | Double |
 
+#### Attributes
+
+| Name | Description | Values |
+| ---- | ----------- | ------ |
+| id | Identifier for the hardware sensor | Any Str |
+
 ## Resource Attributes
 
 | Name | Description | Values | Enabled |
 | ---- | ----------- | ------ | ------- |
-| hardware.chip_name | The name of the hardware sensor chip | Any Str | true |
+| name | The name of the hardware component | Any Str | true |

@@ -5,6 +5,7 @@ package hardwarescraper // import "github.com/open-telemetry/opentelemetry-colle
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path"
 	"regexp"
@@ -66,7 +67,7 @@ func newChip(rb *metadata.ResourceBuilder, device string) (*chip, error) {
 		return nil, err
 	}
 
-	rb.SetHardwareChipName(strings.Trim(string(raw), "\n"))
+	rb.SetName(strings.Trim(string(raw), "\n"))
 
 	c := &chip{device: device, resource: rb.Emit()}
 
@@ -97,17 +98,18 @@ func (c *chip) scrape(ctx context.Context, mb *metadata.MetricsBuilder, ts pcomm
 type sensor struct {
 	path string
 	kind string
+	id   string
 }
 
 func newSensor(chip *chip, name string) *sensor {
-	// TODO: deal with multiple sensors of the same kind
-	if ok, kind, _, prop := explodeSensorFilename(name); ok {
+	if ok, kind, num, prop := explodeSensorFilename(name); ok {
 		switch kind {
 		case "temp", "humidity":
 			if prop == "input" {
 				return &sensor{
 					path: path.Join(hwmonRoot, chip.device, name),
 					kind: kind,
+					id:   fmt.Sprintf("%s_%s%d", chip.device, kind, num),
 				}
 			}
 		}
@@ -121,9 +123,9 @@ func (s *sensor) scrape(ctx context.Context, mb *metadata.MetricsBuilder, ts pco
 	if err == nil {
 		switch s.kind {
 		case "temp":
-			mb.RecordHardwareTemperatureDataPoint(ts, val)
+			mb.RecordHardwareTemperatureDataPoint(ts, val, s.id)
 		case "humidity":
-			mb.RecordHardwareHumidityDataPoint(ts, val)
+			mb.RecordHardwareHumidityDataPoint(ts, val, s.id)
 		}
 	}
 

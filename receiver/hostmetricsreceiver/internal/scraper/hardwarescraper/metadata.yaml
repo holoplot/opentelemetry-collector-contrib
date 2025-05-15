@@ -10,6 +10,11 @@ status:
 
 sem_conv_version: 1.9.0
 
+attributes:
+  id:
+    description: Identifier for the hardware sensor
+    type: string
+
 metrics:
   hardware.temperature:
     enabled: true
@@ -17,17 +22,18 @@ metrics:
     unit: Cel
     gauge:
       value_type: double
-    attributes: []
+    attributes: [id]
+
   hardware.humidity:
     enabled: true
     description: Humidity reported by hardware sensor
     unit: "%"
     gauge:
       value_type: double
-    attributes: []
+    attributes: [id]
 
 resource_attributes:
-  hardware.chip_name:
-    description: The name of the hardware sensor chip
+  name:
+    description: The name of the hardware component
     type: string
     enabled: true

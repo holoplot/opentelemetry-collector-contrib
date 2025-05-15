@@ -29,7 +29,7 @@ func TestMetricsBuilderConfig(t *testing.T) {
 					HardwareTemperature: MetricConfig{Enabled: true},
 				},
 				ResourceAttributes: ResourceAttributesConfig{
-					HardwareChipName: ResourceAttributeConfig{Enabled: true},
+					Name: ResourceAttributeConfig{Enabled: true},
 				},
 			},
 		},
@@ -41,7 +41,7 @@ func TestMetricsBuilderConfig(t *testing.T) {
 					HardwareTemperature: MetricConfig{Enabled: false},
 				},
 				ResourceAttributes: ResourceAttributesConfig{
-					HardwareChipName: ResourceAttributeConfig{Enabled: false},
+					Name: ResourceAttributeConfig{Enabled: false},
 				},
 			},
 		},
@@ -77,13 +77,13 @@ func TestResourceAttributesConfig(t *testing.T) {
 		{
 			name: "all_set",
 			want: ResourceAttributesConfig{
-				HardwareChipName: ResourceAttributeConfig{Enabled: true},
+				Name: ResourceAttributeConfig{Enabled: true},
 			},
 		},
 		{
 			name: "none_set",
 			want: ResourceAttributesConfig{
-				HardwareChipName: ResourceAttributeConfig{Enabled: false},
+				Name: ResourceAttributeConfig{Enabled: false},
 			},
 		},
 	}

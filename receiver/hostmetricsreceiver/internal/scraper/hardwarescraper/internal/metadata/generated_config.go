@@ -71,12 +71,12 @@ func (rac *ResourceAttributeConfig) Unmarshal(parser *confmap.Conf) error {
 
 // ResourceAttributesConfig provides config for hardware resource attributes.
 type ResourceAttributesConfig struct {
-	HardwareChipName ResourceAttributeConfig `mapstructure:"hardware.chip_name"`
+	Name ResourceAttributeConfig `mapstructure:"name"`
 }
 
 func DefaultResourceAttributesConfig() ResourceAttributesConfig {
 	return ResourceAttributesConfig{
-		HardwareChipName: ResourceAttributeConfig{
+		Name: ResourceAttributeConfig{
 			Enabled: true,
 		},
 	}

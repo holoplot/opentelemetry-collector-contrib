@@ -70,14 +70,14 @@ func TestMetricsBuilder(t *testing.T) {
 
 			defaultMetricsCount++
 			allMetricsCount++
-			mb.RecordHardwareHumidityDataPoint(ts, 1)
+			mb.RecordHardwareHumidityDataPoint(ts, 1, "id-val")
 
 			defaultMetricsCount++
 			allMetricsCount++
-			mb.RecordHardwareTemperatureDataPoint(ts, 1)
+			mb.RecordHardwareTemperatureDataPoint(ts, 1, "id-val")
 
 			rb := mb.NewResourceBuilder()
-			rb.SetHardwareChipName("hardware.chip_name-val")
+			rb.SetName("name-val")
 			res := rb.Emit()
 			metrics := mb.Emit(WithResource(res))
 
@@ -112,6 +112,9 @@ func TestMetricsBuilder(t *testing.T) {
 					assert.Equal(t, ts, dp.Timestamp())
 					assert.Equal(t, pmetric.NumberDataPointValueTypeDouble, dp.ValueType())
 					assert.InDelta(t, float64(1), dp.DoubleValue(), 0.01)
+					attrVal, ok := dp.Attributes().Get("id")
+					assert.True(t, ok)
+					assert.Equal(t, "id-val", attrVal.Str())
 				case "hardware.temperature":
 					assert.False(t, validatedMetrics["hardware.temperature"], "Found a duplicate in the metrics slice: hardware.temperature")
 					validatedMetrics["hardware.temperature"] = true
@@ -124,6 +127,9 @@ func TestMetricsBuilder(t *testing.T) {
 					assert.Equal(t, ts, dp.Timestamp())
 					assert.Equal(t, pmetric.NumberDataPointValueTypeDouble, dp.ValueType())
 					assert.InDelta(t, float64(1), dp.DoubleValue(), 0.01)
+					attrVal, ok := dp.Attributes().Get("id")
+					assert.True(t, ok)
+					assert.Equal(t, "id-val", attrVal.Str())
 				}
 			}
 		})

@@ -6,7 +6,7 @@ all_set:
     hardware.temperature:
       enabled: true
   resource_attributes:
-    hardware.chip_name:
+    name:
       enabled: true
 none_set:
   metrics:
@@ -15,17 +15,17 @@ none_set:
     hardware.temperature:
       enabled: false
   resource_attributes:
-    hardware.chip_name:
+    name:
       enabled: false
 filter_set_include:
   resource_attributes:
-    hardware.chip_name:
+    name:
       enabled: true
       metrics_include:
         - regexp: ".*"
 filter_set_exclude:
   resource_attributes:
-    hardware.chip_name:
+    name:
       enabled: true
       metrics_exclude:
-        - strict: "hardware.chip_name-val"
+        - strict: "name-val"

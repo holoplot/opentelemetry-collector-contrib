@@ -13,7 +13,7 @@ func TestResourceBuilder(t *testing.T) {
 		t.Run(tt, func(t *testing.T) {
 			cfg := loadResourceAttributesConfig(t, tt)
 			rb := NewResourceBuilder(cfg)
-			rb.SetHardwareChipName("hardware.chip_name-val")
+			rb.SetName("name-val")
 
 			res := rb.Emit()
 			assert.Equal(t, 0, rb.Emit().Attributes().Len()) // Second call should return empty Resource
@@ -30,10 +30,10 @@ func TestResourceBuilder(t *testing.T) {
 				assert.Failf(t, "unexpected test case: %s", tt)
 			}
 
-			val, ok := res.Attributes().Get("hardware.chip_name")
+			val, ok := res.Attributes().Get("name")
 			assert.True(t, ok)
 			if ok {
-				assert.Equal(t, "hardware.chip_name-val", val.Str())
+				assert.Equal(t, "name-val", val.Str())
 			}
 		})
 	}

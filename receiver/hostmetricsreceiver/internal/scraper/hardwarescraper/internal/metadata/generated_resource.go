@@ -21,10 +21,10 @@ func NewResourceBuilder(rac ResourceAttributesConfig) *ResourceBuilder {
 	}
 }
 
-// SetHardwareChipName sets provided value as "hardware.chip_name" attribute.
-func (rb *ResourceBuilder) SetHardwareChipName(val string) {
-	if rb.config.HardwareChipName.Enabled {
-		rb.res.Attributes().PutStr("hardware.chip_name", val)
+// SetName sets provided value as "name" attribute.
+func (rb *ResourceBuilder) SetName(val string) {
+	if rb.config.Name.Enabled {
+		rb.res.Attributes().PutStr("name", val)
 	}
 }
 

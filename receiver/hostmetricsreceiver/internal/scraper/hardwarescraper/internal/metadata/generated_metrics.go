@@ -43,9 +43,10 @@ func (m *metricHardwareHumidity) init() {
 	m.data.SetDescription("Humidity reported by hardware sensor")
 	m.data.SetUnit("%")
 	m.data.SetEmptyGauge()
+	m.data.Gauge().DataPoints().EnsureCapacity(m.capacity)
 }
 
-func (m *metricHardwareHumidity) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val float64) {
+func (m *metricHardwareHumidity) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val float64, idAttributeValue string) {
 	if !m.config.Enabled {
 		return
 	}
@@ -53,6 +54,7 @@ func (m *metricHardwareHumidity) recordDataPoint(start pcommon.Timestamp, ts pco
 	dp.SetStartTimestamp(start)
 	dp.SetTimestamp(ts)
 	dp.SetDoubleValue(val)
+	dp.Attributes().PutStr("id", idAttributeValue)
 }
 
 // updateCapacity saves max length of data point slices that will be used for the slice capacity.
@@ -92,9 +94,10 @@ func (m *metricHardwareTemperature) init() {
 	m.data.SetDescription("Temperature reported by hardware sensor")
 	m.data.SetUnit("Cel")
 	m.data.SetEmptyGauge()
+	m.data.Gauge().DataPoints().EnsureCapacity(m.capacity)
 }
 
-func (m *metricHardwareTemperature) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val float64) {
+func (m *metricHardwareTemperature) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val float64, idAttributeValue string) {
 	if !m.config.Enabled {
 		return
 	}
@@ -102,6 +105,7 @@ func (m *metricHardwareTemperature) recordDataPoint(start pcommon.Timestamp, ts 
 	dp.SetStartTimestamp(start)
 	dp.SetTimestamp(ts)
 	dp.SetDoubleValue(val)
+	dp.Attributes().PutStr("id", idAttributeValue)
 }
 
 // updateCapacity saves max length of data point slices that will be used for the slice capacity.
@@ -171,11 +175,11 @@ func NewMetricsBuilder(mbc MetricsBuilderConfig, settings scraper.Settings, opti
 		resourceAttributeIncludeFilter: make(map[string]filter.Filter),
 		resourceAttributeExcludeFilter: make(map[string]filter.Filter),
 	}
-	if mbc.ResourceAttributes.HardwareChipName.MetricsInclude != nil {
-		mb.resourceAttributeIncludeFilter["hardware.chip_name"] = filter.CreateFilter(mbc.ResourceAttributes.HardwareChipName.MetricsInclude)
+	if mbc.ResourceAttributes.Name.MetricsInclude != nil {
+		mb.resourceAttributeIncludeFilter["name"] = filter.CreateFilter(mbc.ResourceAttributes.Name.MetricsInclude)
 	}
-	if mbc.ResourceAttributes.HardwareChipName.MetricsExclude != nil {
-		mb.resourceAttributeExcludeFilter["hardware.chip_name"] = filter.CreateFilter(mbc.ResourceAttributes.HardwareChipName.MetricsExclude)
+	if mbc.ResourceAttributes.Name.MetricsExclude != nil {
+		mb.resourceAttributeExcludeFilter["name"] = filter.CreateFilter(mbc.ResourceAttributes.Name.MetricsExclude)
 	}
 
 	for _, op := range options {
@@ -281,13 +285,13 @@ func (mb *MetricsBuilder) Emit(options ...ResourceMetricsOption) pmetric.Metrics
 }
 
 // RecordHardwareHumidityDataPoint adds a data point to hardware.humidity metric.
-func (mb *MetricsBuilder) RecordHardwareHumidityDataPoint(ts pcommon.Timestamp, val float64) {
-	mb.metricHardwareHumidity.recordDataPoint(mb.startTime, ts, val)
+func (mb *MetricsBuilder) RecordHardwareHumidityDataPoint(ts pcommon.Timestamp, val float64, idAttributeValue string) {
+	mb.metricHardwareHumidity.recordDataPoint(mb.startTime, ts, val, idAttributeValue)
 }
 
 // RecordHardwareTemperatureDataPoint adds a data point to hardware.temperature metric.
-func (mb *MetricsBuilder) RecordHardwareTemperatureDataPoint(ts pcommon.Timestamp, val float64) {
-	mb.metricHardwareTemperature.recordDataPoint(mb.startTime, ts, val)
+func (mb *MetricsBuilder) RecordHardwareTemperatureDataPoint(ts pcommon.Timestamp, val float64, idAttributeValue string) {
+	mb.metricHardwareTemperature.recordDataPoint(mb.startTime, ts, val, idAttributeValue)
 }
 
 // Reset resets metrics builder to its initial state. It should be used when external metrics source is restarted,
