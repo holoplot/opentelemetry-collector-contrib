@@ -21,11 +21,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/hostmetricsreceiver/internal/scraper/hardwarescraper/internal/metadata"
 )
 
-const (
-	hwmonRoot = "/sys/class/hwmon"
-)
-
-var hwmonFilenameFormat = regexp.MustCompile(`^(?P<type>[^0-9]+)(?P<id>[0-9]*)?(_(?P<property>.+))?$`)
+var hwmonFilenameFormat = regexp.MustCompile(`^(?P<type>\D+)(?P<id>\d*)?(_(?P<property>.+))?$`)
 
 // explodeSensorFilename splits a sensor name into <type><num>_<property>.
 func explodeSensorFilename(filename string) (ok bool, sensorType string, sensorNum int, sensorProperty string) {
@@ -71,8 +67,8 @@ type chip struct {
 	sensors  []*sensor
 }
 
-func newChip(rb *metadata.ResourceBuilder, device string) (*chip, error) {
-	name, err := ReadFile(path.Join(hwmonRoot, device, "name"))
+func newChip(rb *metadata.ResourceBuilder, rootDir, device string) (*chip, error) {
+	name, err := ReadFile(path.Join(rootDir, device, "name"))
 	if err != nil {
 		return nil, err
 	}
@@ -81,10 +77,10 @@ func newChip(rb *metadata.ResourceBuilder, device string) (*chip, error) {
 
 	c := &chip{device: device, name: name, resource: rb.Emit()}
 
-	entries, _ := os.ReadDir(path.Join(hwmonRoot, device))
+	entries, _ := os.ReadDir(path.Join(rootDir, device))
 	for _, entry := range entries {
 		if entry.Type().IsRegular() {
-			if s := newSensor(c, entry.Name()); s != nil {
+			if s := newSensor(c, rootDir, entry.Name()); s != nil {
 				c.sensors = append(c.sensors, s)
 			}
 		}
@@ -112,7 +108,7 @@ type sensor struct {
 	label string
 }
 
-func newSensor(chip *chip, name string) *sensor {
+func newSensor(chip *chip, rootDir, name string) *sensor {
 	var s *sensor
 
 	if ok, kind, num, prop := explodeSensorFilename(name); ok {
@@ -120,7 +116,7 @@ func newSensor(chip *chip, name string) *sensor {
 		case "fan", "humidity", "temp":
 			if prop == "input" {
 				s = &sensor{
-					path: path.Join(hwmonRoot, chip.device, name),
+					path: path.Join(rootDir, chip.device, name),
 					kind: kind,
 					id:   fmt.Sprintf("%s_%s%d", chip.device, kind, num),
 				}
@@ -128,7 +124,7 @@ func newSensor(chip *chip, name string) *sensor {
 		}
 
 		if s != nil {
-			filename := path.Join(hwmonRoot, chip.device, kind+"_label")
+			filename := path.Join(rootDir, chip.device, kind+"_label")
 			if label, err := ReadFile(filename); err != nil {
 				s.label = label
 			} else {
@@ -179,6 +175,7 @@ type hardwareScraper struct {
 	settings scraper.Settings
 	config   *Config
 	mb       *metadata.MetricsBuilder
+	rootDir  string
 	chips    []*chip
 }
 
@@ -187,6 +184,7 @@ func newHardwareScraper(_ context.Context, settings scraper.Settings, cfg *Confi
 	return &hardwareScraper{
 		settings: settings,
 		config:   cfg,
+		rootDir:  "/sys/class/hwmon",
 	}
 }
 
@@ -195,10 +193,10 @@ func (s *hardwareScraper) start(_ context.Context, _ component.Host) error {
 
 	rb := s.mb.NewResourceBuilder()
 
-	entries, _ := os.ReadDir(hwmonRoot)
+	entries, _ := os.ReadDir(s.rootDir)
 
 	for _, entry := range entries {
-		path := path.Join(hwmonRoot, entry.Name())
+		path := path.Join(s.rootDir, entry.Name())
 
 		fileInfo, err := os.Lstat(path)
 		if err != nil {
@@ -216,7 +214,7 @@ func (s *hardwareScraper) start(_ context.Context, _ component.Host) error {
 			continue
 		}
 
-		if c, err := newChip(rb, entry.Name()); err == nil {
+		if c, err := newChip(rb, s.rootDir, entry.Name()); err == nil {
 			s.chips = append(s.chips, c)
 		}
 	}
