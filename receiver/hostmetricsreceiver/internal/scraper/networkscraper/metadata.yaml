@@ -33,6 +33,15 @@ attributes:
     requirement_level: recommended
 
 metrics:
+  system.network.bandwidth.limit:
+    enabled: true
+    description: Link speed of physical network interface.
+    unit: "By/s"
+    stability: development
+    gauge:
+      value_type: int
+      monotonic: false
+    attributes: [device]
   system.network.connections:
     enabled: true
     description: The number of connections.
@@ -101,3 +110,11 @@ metrics:
       aggregation_temporality: cumulative
       monotonic: true
     attributes: [device, direction]
+  system.network.up:
+    enabled: true
+    description: Link status of physical network interface. 0 = down, 1 = up
+    unit: ""
+    stability: development
+    gauge:
+      value_type: int
+    attributes: [device]

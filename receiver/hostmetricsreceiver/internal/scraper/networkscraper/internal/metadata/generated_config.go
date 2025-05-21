@@ -8,6 +8,54 @@ import (
 	"go.opentelemetry.io/collector/confmap"
 )
 
+// SystemNetworkBandwidthLimitMetricAttributeKey specifies the key of an attribute for the system.network.bandwidth.limit metric.
+type SystemNetworkBandwidthLimitMetricAttributeKey string
+
+const (
+	SystemNetworkBandwidthLimitMetricAttributeKeyDevice SystemNetworkBandwidthLimitMetricAttributeKey = "device"
+)
+
+// SystemNetworkBandwidthLimitMetricConfig provides config for the system.network.bandwidth.limit metric.
+type SystemNetworkBandwidthLimitMetricConfig struct {
+	Enabled          bool `mapstructure:"enabled"`
+	enabledSetByUser bool
+
+	AggregationStrategy string                                          `mapstructure:"aggregation_strategy"`
+	EnabledAttributes   []SystemNetworkBandwidthLimitMetricAttributeKey `mapstructure:"attributes"`
+}
+
+func (ms *SystemNetworkBandwidthLimitMetricConfig) Unmarshal(parser *confmap.Conf) error {
+	if parser == nil {
+		return nil
+	}
+
+	err := parser.Unmarshal(ms)
+	if err != nil {
+		return err
+	}
+
+	ms.enabledSetByUser = parser.IsSet("enabled")
+	return nil
+}
+
+func (ms *SystemNetworkBandwidthLimitMetricConfig) Validate() error {
+	for _, val := range ms.EnabledAttributes {
+		switch val {
+		case SystemNetworkBandwidthLimitMetricAttributeKeyDevice:
+		default:
+			return fmt.Errorf("metric system.network.bandwidth.limit doesn't have an attribute %v, valid attributes: [device]", val)
+		}
+	}
+
+	switch ms.AggregationStrategy {
+	case AggregationStrategySum, AggregationStrategyAvg, AggregationStrategyMin, AggregationStrategyMax:
+	default:
+		return fmt.Errorf("invalid aggregation strategy %q, valid strategies: [%s, %s, %s, %s]", ms.AggregationStrategy, AggregationStrategySum, AggregationStrategyAvg, AggregationStrategyMin, AggregationStrategyMax)
+	}
+
+	return nil
+}
+
 // SystemNetworkConnectionsMetricAttributeKey specifies the key of an attribute for the system.network.connections metric.
 type SystemNetworkConnectionsMetricAttributeKey string
 
@@ -293,8 +341,57 @@ func (ms *SystemNetworkPacketsMetricConfig) Validate() error {
 	return nil
 }
 
+// SystemNetworkUpMetricAttributeKey specifies the key of an attribute for the system.network.up metric.
+type SystemNetworkUpMetricAttributeKey string
+
+const (
+	SystemNetworkUpMetricAttributeKeyDevice SystemNetworkUpMetricAttributeKey = "device"
+)
+
+// SystemNetworkUpMetricConfig provides config for the system.network.up metric.
+type SystemNetworkUpMetricConfig struct {
+	Enabled          bool `mapstructure:"enabled"`
+	enabledSetByUser bool
+
+	AggregationStrategy string                              `mapstructure:"aggregation_strategy"`
+	EnabledAttributes   []SystemNetworkUpMetricAttributeKey `mapstructure:"attributes"`
+}
+
+func (ms *SystemNetworkUpMetricConfig) Unmarshal(parser *confmap.Conf) error {
+	if parser == nil {
+		return nil
+	}
+
+	err := parser.Unmarshal(ms)
+	if err != nil {
+		return err
+	}
+
+	ms.enabledSetByUser = parser.IsSet("enabled")
+	return nil
+}
+
+func (ms *SystemNetworkUpMetricConfig) Validate() error {
+	for _, val := range ms.EnabledAttributes {
+		switch val {
+		case SystemNetworkUpMetricAttributeKeyDevice:
+		default:
+			return fmt.Errorf("metric system.network.up doesn't have an attribute %v, valid attributes: [device]", val)
+		}
+	}
+
+	switch ms.AggregationStrategy {
+	case AggregationStrategySum, AggregationStrategyAvg, AggregationStrategyMin, AggregationStrategyMax:
+	default:
+		return fmt.Errorf("invalid aggregation strategy %q, valid strategies: [%s, %s, %s, %s]", ms.AggregationStrategy, AggregationStrategySum, AggregationStrategyAvg, AggregationStrategyMin, AggregationStrategyMax)
+	}
+
+	return nil
+}
+
 // MetricsConfig provides config for network metrics.
 type MetricsConfig struct {
+	SystemNetworkBandwidthLimit SystemNetworkBandwidthLimitMetricConfig `mapstructure:"system.network.bandwidth.limit"`
 	SystemNetworkConnections    SystemNetworkConnectionsMetricConfig    `mapstructure:"system.network.connections"`
 	SystemNetworkConntrackCount SystemNetworkConntrackCountMetricConfig `mapstructure:"system.network.conntrack.count"`
 	SystemNetworkConntrackMax   SystemNetworkConntrackMaxMetricConfig   `mapstructure:"system.network.conntrack.max"`
@@ -302,10 +399,16 @@ type MetricsConfig struct {
 	SystemNetworkErrors         SystemNetworkErrorsMetricConfig         `mapstructure:"system.network.errors"`
 	SystemNetworkIo             SystemNetworkIoMetricConfig             `mapstructure:"system.network.io"`
 	SystemNetworkPackets        SystemNetworkPacketsMetricConfig        `mapstructure:"system.network.packets"`
+	SystemNetworkUp             SystemNetworkUpMetricConfig             `mapstructure:"system.network.up"`
 }
 
 func DefaultMetricsConfig() MetricsConfig {
 	return MetricsConfig{
+		SystemNetworkBandwidthLimit: SystemNetworkBandwidthLimitMetricConfig{
+			Enabled:             true,
+			AggregationStrategy: AggregationStrategyAvg,
+			EnabledAttributes:   []SystemNetworkBandwidthLimitMetricAttributeKey{SystemNetworkBandwidthLimitMetricAttributeKeyDevice},
+		},
 		SystemNetworkConnections: SystemNetworkConnectionsMetricConfig{
 			Enabled:             true,
 			AggregationStrategy: AggregationStrategySum,
@@ -336,6 +439,11 @@ func DefaultMetricsConfig() MetricsConfig {
 			Enabled:             true,
 			AggregationStrategy: AggregationStrategySum,
 			EnabledAttributes:   []SystemNetworkPacketsMetricAttributeKey{SystemNetworkPacketsMetricAttributeKeyDevice, SystemNetworkPacketsMetricAttributeKeyDirection},
+		},
+		SystemNetworkUp: SystemNetworkUpMetricConfig{
+			Enabled:             true,
+			AggregationStrategy: AggregationStrategyAvg,
+			EnabledAttributes:   []SystemNetworkUpMetricAttributeKey{SystemNetworkUpMetricAttributeKeyDevice},
 		},
 	}
 }

@@ -4,6 +4,29 @@ $defs:
     description: MetricsConfig provides config for network metrics.
     type: object
     properties:
+      system.network.bandwidth.limit:
+        description: "SystemNetworkBandwidthLimitMetricConfig provides config for the system.network.bandwidth.limit metric."
+        type: object
+        properties:
+          enabled:
+            type: boolean
+            default: true
+          aggregation_strategy:
+            type: string
+            enum:
+              - "sum"
+              - "avg"
+              - "min"
+              - "max"
+            default: "avg"
+          attributes:
+            type: array
+            items:
+              type: string
+              enum:
+                - "device"
+            default:
+              - "device"
       system.network.connections:
         description: "SystemNetworkConnectionsMetricConfig provides config for the system.network.connections metric."
         type: object
@@ -143,6 +166,29 @@ $defs:
             default:
               - "device"
               - "direction"
+      system.network.up:
+        description: "SystemNetworkUpMetricConfig provides config for the system.network.up metric."
+        type: object
+        properties:
+          enabled:
+            type: boolean
+            default: true
+          aggregation_strategy:
+            type: string
+            enum:
+              - "sum"
+              - "avg"
+              - "min"
+              - "max"
+            default: "avg"
+          attributes:
+            type: array
+            items:
+              type: string
+              enum:
+                - "device"
+            default:
+              - "device"
   metrics_builder_config:
     description: MetricsBuilderConfig is a configuration for network metrics builder.
     type: object
