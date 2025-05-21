@@ -27,6 +27,7 @@ func TestMetricsBuilderConfig(t *testing.T) {
 			name: "all_set",
 			want: MetricsBuilderConfig{
 				Metrics: MetricsConfig{
+					SystemNetworkBandwidthLimit: MetricConfig{Enabled: true},
 					SystemNetworkConnections:    MetricConfig{Enabled: true},
 					SystemNetworkConntrackCount: MetricConfig{Enabled: true},
 					SystemNetworkConntrackMax:   MetricConfig{Enabled: true},
@@ -34,6 +35,7 @@ func TestMetricsBuilderConfig(t *testing.T) {
 					SystemNetworkErrors:         MetricConfig{Enabled: true},
 					SystemNetworkIo:             MetricConfig{Enabled: true},
 					SystemNetworkPackets:        MetricConfig{Enabled: true},
+					SystemNetworkUp:             MetricConfig{Enabled: true},
 				},
 			},
 		},
@@ -41,6 +43,7 @@ func TestMetricsBuilderConfig(t *testing.T) {
 			name: "none_set",
 			want: MetricsBuilderConfig{
 				Metrics: MetricsConfig{
+					SystemNetworkBandwidthLimit: MetricConfig{Enabled: false},
 					SystemNetworkConnections:    MetricConfig{Enabled: false},
 					SystemNetworkConntrackCount: MetricConfig{Enabled: false},
 					SystemNetworkConntrackMax:   MetricConfig{Enabled: false},
@@ -48,6 +51,7 @@ func TestMetricsBuilderConfig(t *testing.T) {
 					SystemNetworkErrors:         MetricConfig{Enabled: false},
 					SystemNetworkIo:             MetricConfig{Enabled: false},
 					SystemNetworkPackets:        MetricConfig{Enabled: false},
+					SystemNetworkUp:             MetricConfig{Enabled: false},
 				},
 			},
 		},

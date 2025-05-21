@@ -32,6 +32,7 @@ func TestScrape(t *testing.T) {
 		conntrackFunc           func(context.Context) ([]net.FilterStat, error)
 		expectConntrakMetrics   bool
 		expectConnectionsMetric bool
+		expectEthtoolMetric     bool
 		expectedStartTime       pcommon.Timestamp
 		newErrRegex             string
 		initializationErr       string
@@ -48,6 +49,7 @@ func TestScrape(t *testing.T) {
 			},
 			expectConntrakMetrics:   true,
 			expectConnectionsMetric: true,
+			expectEthtoolMetric:     true,
 		},
 		{
 			name: "Standard with direction removed",
@@ -56,6 +58,7 @@ func TestScrape(t *testing.T) {
 			},
 			expectConntrakMetrics:   true,
 			expectConnectionsMetric: true,
+			expectEthtoolMetric:     true,
 		},
 		{
 			name: "Validate Start Time",
@@ -65,6 +68,7 @@ func TestScrape(t *testing.T) {
 			bootTimeFunc:            func(context.Context) (uint64, error) { return 100, nil },
 			expectConntrakMetrics:   true,
 			expectConnectionsMetric: true,
+			expectEthtoolMetric:     true,
 			expectedStartTime:       100 * 1e9,
 		},
 		{
@@ -75,6 +79,7 @@ func TestScrape(t *testing.T) {
 			},
 			expectConntrakMetrics:   false,
 			expectConnectionsMetric: true,
+			expectEthtoolMetric:     false,
 		},
 		{
 			name: "Invalid Include Filter",
@@ -84,6 +89,7 @@ func TestScrape(t *testing.T) {
 			},
 			newErrRegex:             "^error creating network interface include filters:",
 			expectConnectionsMetric: true,
+			expectEthtoolMetric:     true,
 		},
 		{
 			name: "Invalid Exclude Filter",
@@ -93,6 +99,7 @@ func TestScrape(t *testing.T) {
 			},
 			newErrRegex:             "^error creating network interface exclude filters:",
 			expectConnectionsMetric: true,
+			expectEthtoolMetric:     true,
 		},
 		{
 			name:                    "Boot Time Error",
@@ -100,6 +107,7 @@ func TestScrape(t *testing.T) {
 			bootTimeFunc:            func(context.Context) (uint64, error) { return 0, errors.New("err1") },
 			initializationErr:       "err1",
 			expectConnectionsMetric: true,
+			expectEthtoolMetric:     true,
 		},
 		{
 			name:                    "IOCounters Error",
@@ -108,13 +116,15 @@ func TestScrape(t *testing.T) {
 			expectedErr:             "failed to read network IO stats: err2",
 			expectedErrCount:        networkMetricsLen,
 			expectConnectionsMetric: true,
+			expectEthtoolMetric:     true,
 		},
 		{
-			name:             "Connections Error",
-			config:           &Config{MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig()},
-			connectionsFunc:  func(context.Context, string) ([]net.ConnectionStat, error) { return nil, errors.New("err3") },
-			expectedErr:      "failed to read TCP connections: err3",
-			expectedErrCount: connectionsMetricsLen,
+			name:                "Connections Error",
+			config:              &Config{MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig()},
+			connectionsFunc:     func(context.Context, string) ([]net.ConnectionStat, error) { return nil, errors.New("err3") },
+			expectedErr:         "failed to read TCP connections: err3",
+			expectedErrCount:    connectionsMetricsLen,
+			expectEthtoolMetric: true,
 		},
 		{
 			name: "Conntrack error ignored if metric disabled",
@@ -124,6 +134,7 @@ func TestScrape(t *testing.T) {
 			conntrackFunc:           func(context.Context) ([]net.FilterStat, error) { return nil, errors.New("conntrack failed") },
 			expectConntrakMetrics:   true,
 			expectConnectionsMetric: true,
+			expectEthtoolMetric:     true,
 		},
 		{
 			name: "Connections metrics is disabled",
@@ -136,6 +147,7 @@ func TestScrape(t *testing.T) {
 				panic("should not be called")
 			},
 			expectConntrakMetrics: true,
+			expectEthtoolMetric:   true,
 		},
 	}
 
@@ -189,16 +201,23 @@ func TestScrape(t *testing.T) {
 			require.NoError(t, err, "Failed to scrape metrics: %v", err)
 
 			expectedMetricCount := 0
+			if test.expectConnectionsMetric {
+				expectedMetricCount++
+			}
 			if test.expectConntrakMetrics {
 				expectedMetricCount += 4
 			}
-			if test.expectConnectionsMetric {
-				expectedMetricCount++
+			if test.expectEthtoolMetric {
+				expectedMetricCount += 2
 			}
 			assert.Equal(t, expectedMetricCount, md.MetricCount())
 
 			metrics := md.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics()
 			idx := 0
+			if test.expectEthtoolMetric {
+				assertNetworkEthtoolMetricValid(t, metrics.At(idx), "system.network.bandwidth.limit", test.expectedStartTime)
+				idx++
+			}
 			if test.expectConnectionsMetric {
 				assertNetworkConnectionsMetricValid(t, metrics.At(idx))
 				idx++
@@ -211,9 +230,22 @@ func TestScrape(t *testing.T) {
 				assertNetworkIOMetricValid(t, metrics.At(idx+3), "system.network.packets",
 					test.expectedStartTime)
 				internal.AssertSameTimeStampForMetrics(t, metrics, idx, idx+4)
+				idx += 4
+			}
+			if test.expectEthtoolMetric {
+				assertNetworkEthtoolMetricValid(t, metrics.At(idx), "system.network.up", test.expectedStartTime)
 			}
 		})
 	}
+}
+
+func assertNetworkEthtoolMetricValid(t *testing.T, metric pmetric.Metric, expectedName string, startTime pcommon.Timestamp) {
+	assert.Equal(t, expectedName, metric.Name())
+	if startTime != 0 {
+		internal.AssertGaugeMetricStartTimeEquals(t, metric, startTime)
+	}
+	assert.GreaterOrEqual(t, metric.Gauge().DataPoints().Len(), 2)
+	internal.AssertGaugeMetricHasAttribute(t, metric, 0, "device")
 }
 
 func assertNetworkIOMetricValid(t *testing.T, metric pmetric.Metric, expectedName string, startTime pcommon.Timestamp) {
