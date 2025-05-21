@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/safchain/ethtool"
 	"github.com/shirou/gopsutil/v4/host"
 	"github.com/shirou/gopsutil/v4/net"
 	"go.opentelemetry.io/collector/component"
@@ -33,6 +34,7 @@ type networkScraper struct {
 	startTime pcommon.Timestamp
 	includeFS filterset.FilterSet
 	excludeFS filterset.FilterSet
+	eth       *ethtool.Ethtool
 
 	// for mocking
 	bootTime    func(context.Context) (uint64, error)
@@ -77,8 +79,19 @@ func (s *networkScraper) start(ctx context.Context, _ component.Host) error {
 		return err
 	}
 
+	s.eth, _ = ethtool.NewEthtool()
+
 	s.startTime = pcommon.Timestamp(bootTime * 1e9)
 	s.mb = metadata.NewMetricsBuilder(s.config.MetricsBuilderConfig, s.settings, metadata.WithStartTime(pcommon.Timestamp(bootTime*1e9)))
+	return nil
+}
+
+func (s *networkScraper) shutdown(_ context.Context) error {
+	if s.eth != nil {
+		s.eth.Close()
+		s.eth = nil
+	}
+
 	return nil
 }
 
@@ -120,6 +133,7 @@ func (s *networkScraper) recordNetworkCounterMetrics(ctx context.Context) error 
 		s.recordNetworkDroppedPacketsMetric(now, ioCounters)
 		s.recordNetworkErrorPacketsMetric(now, ioCounters)
 		s.recordNetworkIOMetric(now, ioCounters)
+		s.recordNetworkEthtoolMetrics(now, ioCounters)
 	}
 
 	return nil
@@ -186,6 +200,23 @@ func getTCPConnectionStatusCounts(connections []net.ConnectionStat) map[string]i
 func (s *networkScraper) recordNetworkConnectionsMetric(now pcommon.Timestamp, connectionStateCounts map[string]int64) {
 	for connectionState, count := range connectionStateCounts {
 		s.mb.RecordSystemNetworkConnectionsDataPoint(now, count, metadata.AttributeProtocolTcp, connectionState)
+	}
+}
+
+func (s *networkScraper) recordNetworkEthtoolMetrics(now pcommon.Timestamp, ioCountersSlice []net.IOCountersStat) {
+	if s.eth == nil {
+		return
+	}
+
+	for _, ioCounters := range ioCountersSlice {
+		if state, err := s.eth.LinkState(ioCounters.Name); err == nil {
+			s.mb.RecordSystemNetworkUpDataPoint(now, int64(state), ioCounters.Name)
+		}
+
+		cmd := ethtool.EthtoolCmd{}
+		if speed, err := s.eth.CmdGet(&cmd, ioCounters.Name); err == nil {
+			s.mb.RecordSystemNetworkBandwidthLimitDataPoint(now, int64(speed), ioCounters.Name)
+		}
 	}
 }
 
