@@ -60,6 +60,10 @@ func TestMetricsBuilder(t *testing.T) {
 
 			defaultMetricsCount++
 			allMetricsCount++
+			mb.RecordSystemNetworkBandwidthLimitDataPoint(ts, 1, "device-val")
+
+			defaultMetricsCount++
+			allMetricsCount++
 			mb.RecordSystemNetworkConnectionsDataPoint(ts, 1, AttributeProtocolTcp, "state-val")
 
 			allMetricsCount++
@@ -84,6 +88,10 @@ func TestMetricsBuilder(t *testing.T) {
 			allMetricsCount++
 			mb.RecordSystemNetworkPacketsDataPoint(ts, 1, "device-val", AttributeDirectionReceive)
 
+			defaultMetricsCount++
+			allMetricsCount++
+			mb.RecordSystemNetworkUpDataPoint(ts, 1, "device-val")
+
 			res := pcommon.NewResource()
 			metrics := mb.Emit(WithResource(res))
 
@@ -106,6 +114,21 @@ func TestMetricsBuilder(t *testing.T) {
 			validatedMetrics := make(map[string]bool)
 			for i := 0; i < ms.Len(); i++ {
 				switch ms.At(i).Name() {
+				case "system.network.bandwidth.limit":
+					assert.False(t, validatedMetrics["system.network.bandwidth.limit"], "Found a duplicate in the metrics slice: system.network.bandwidth.limit")
+					validatedMetrics["system.network.bandwidth.limit"] = true
+					assert.Equal(t, pmetric.MetricTypeGauge, ms.At(i).Type())
+					assert.Equal(t, 1, ms.At(i).Gauge().DataPoints().Len())
+					assert.Equal(t, "Link speed of physical network interface.", ms.At(i).Description())
+					assert.Equal(t, "By/s", ms.At(i).Unit())
+					dp := ms.At(i).Gauge().DataPoints().At(0)
+					assert.Equal(t, start, dp.StartTimestamp())
+					assert.Equal(t, ts, dp.Timestamp())
+					assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
+					assert.Equal(t, int64(1), dp.IntValue())
+					attrVal, ok := dp.Attributes().Get("device")
+					assert.True(t, ok)
+					assert.Equal(t, "device-val", attrVal.Str())
 				case "system.network.connections":
 					assert.False(t, validatedMetrics["system.network.connections"], "Found a duplicate in the metrics slice: system.network.connections")
 					validatedMetrics["system.network.connections"] = true
@@ -234,6 +257,21 @@ func TestMetricsBuilder(t *testing.T) {
 					attrVal, ok = dp.Attributes().Get("direction")
 					assert.True(t, ok)
 					assert.Equal(t, "receive", attrVal.Str())
+				case "system.network.up":
+					assert.False(t, validatedMetrics["system.network.up"], "Found a duplicate in the metrics slice: system.network.up")
+					validatedMetrics["system.network.up"] = true
+					assert.Equal(t, pmetric.MetricTypeGauge, ms.At(i).Type())
+					assert.Equal(t, 1, ms.At(i).Gauge().DataPoints().Len())
+					assert.Equal(t, "Link status of physical network interface. 0 = down, 1 = up", ms.At(i).Description())
+					assert.Empty(t, ms.At(i).Unit())
+					dp := ms.At(i).Gauge().DataPoints().At(0)
+					assert.Equal(t, start, dp.StartTimestamp())
+					assert.Equal(t, ts, dp.Timestamp())
+					assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
+					assert.Equal(t, int64(1), dp.IntValue())
+					attrVal, ok := dp.Attributes().Get("device")
+					assert.True(t, ok)
+					assert.Equal(t, "device-val", attrVal.Str())
 				}
 			}
 		})

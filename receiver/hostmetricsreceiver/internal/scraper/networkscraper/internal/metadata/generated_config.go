@@ -28,6 +28,7 @@ func (ms *MetricConfig) Unmarshal(parser *confmap.Conf) error {
 
 // MetricsConfig provides config for network metrics.
 type MetricsConfig struct {
+	SystemNetworkBandwidthLimit MetricConfig `mapstructure:"system.network.bandwidth.limit"`
 	SystemNetworkConnections    MetricConfig `mapstructure:"system.network.connections"`
 	SystemNetworkConntrackCount MetricConfig `mapstructure:"system.network.conntrack.count"`
 	SystemNetworkConntrackMax   MetricConfig `mapstructure:"system.network.conntrack.max"`
@@ -35,10 +36,14 @@ type MetricsConfig struct {
 	SystemNetworkErrors         MetricConfig `mapstructure:"system.network.errors"`
 	SystemNetworkIo             MetricConfig `mapstructure:"system.network.io"`
 	SystemNetworkPackets        MetricConfig `mapstructure:"system.network.packets"`
+	SystemNetworkUp             MetricConfig `mapstructure:"system.network.up"`
 }
 
 func DefaultMetricsConfig() MetricsConfig {
 	return MetricsConfig{
+		SystemNetworkBandwidthLimit: MetricConfig{
+			Enabled: true,
+		},
 		SystemNetworkConnections: MetricConfig{
 			Enabled: true,
 		},
@@ -58,6 +63,9 @@ func DefaultMetricsConfig() MetricsConfig {
 			Enabled: true,
 		},
 		SystemNetworkPackets: MetricConfig{
+			Enabled: true,
+		},
+		SystemNetworkUp: MetricConfig{
 			Enabled: true,
 		},
 	}

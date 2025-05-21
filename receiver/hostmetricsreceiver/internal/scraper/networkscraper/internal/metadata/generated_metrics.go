@@ -61,6 +61,9 @@ var MapAttributeProtocol = map[string]AttributeProtocol{
 }
 
 var MetricsInfo = metricsInfo{
+	SystemNetworkBandwidthLimit: metricInfo{
+		Name: "system.network.bandwidth.limit",
+	},
 	SystemNetworkConnections: metricInfo{
 		Name: "system.network.connections",
 	},
@@ -82,9 +85,13 @@ var MetricsInfo = metricsInfo{
 	SystemNetworkPackets: metricInfo{
 		Name: "system.network.packets",
 	},
+	SystemNetworkUp: metricInfo{
+		Name: "system.network.up",
+	},
 }
 
 type metricsInfo struct {
+	SystemNetworkBandwidthLimit metricInfo
 	SystemNetworkConnections    metricInfo
 	SystemNetworkConntrackCount metricInfo
 	SystemNetworkConntrackMax   metricInfo
@@ -92,10 +99,62 @@ type metricsInfo struct {
 	SystemNetworkErrors         metricInfo
 	SystemNetworkIo             metricInfo
 	SystemNetworkPackets        metricInfo
+	SystemNetworkUp             metricInfo
 }
 
 type metricInfo struct {
 	Name string
+}
+
+type metricSystemNetworkBandwidthLimit struct {
+	data     pmetric.Metric // data buffer for generated metric.
+	config   MetricConfig   // metric config provided by user.
+	capacity int            // max observed number of data points added to the metric.
+}
+
+// init fills system.network.bandwidth.limit metric with initial data.
+func (m *metricSystemNetworkBandwidthLimit) init() {
+	m.data.SetName("system.network.bandwidth.limit")
+	m.data.SetDescription("Link speed of physical network interface.")
+	m.data.SetUnit("By/s")
+	m.data.SetEmptyGauge()
+	m.data.Gauge().DataPoints().EnsureCapacity(m.capacity)
+}
+
+func (m *metricSystemNetworkBandwidthLimit) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64, deviceAttributeValue string) {
+	if !m.config.Enabled {
+		return
+	}
+	dp := m.data.Gauge().DataPoints().AppendEmpty()
+	dp.SetStartTimestamp(start)
+	dp.SetTimestamp(ts)
+	dp.SetIntValue(val)
+	dp.Attributes().PutStr("device", deviceAttributeValue)
+}
+
+// updateCapacity saves max length of data point slices that will be used for the slice capacity.
+func (m *metricSystemNetworkBandwidthLimit) updateCapacity() {
+	if m.data.Gauge().DataPoints().Len() > m.capacity {
+		m.capacity = m.data.Gauge().DataPoints().Len()
+	}
+}
+
+// emit appends recorded metric data to a metrics slice and prepares it for recording another set of data points.
+func (m *metricSystemNetworkBandwidthLimit) emit(metrics pmetric.MetricSlice) {
+	if m.config.Enabled && m.data.Gauge().DataPoints().Len() > 0 {
+		m.updateCapacity()
+		m.data.MoveTo(metrics.AppendEmpty())
+		m.init()
+	}
+}
+
+func newMetricSystemNetworkBandwidthLimit(cfg MetricConfig) metricSystemNetworkBandwidthLimit {
+	m := metricSystemNetworkBandwidthLimit{config: cfg}
+	if cfg.Enabled {
+		m.data = pmetric.NewMetric()
+		m.init()
+	}
+	return m
 }
 
 type metricSystemNetworkConnections struct {
@@ -477,6 +536,57 @@ func newMetricSystemNetworkPackets(cfg MetricConfig) metricSystemNetworkPackets 
 	return m
 }
 
+type metricSystemNetworkUp struct {
+	data     pmetric.Metric // data buffer for generated metric.
+	config   MetricConfig   // metric config provided by user.
+	capacity int            // max observed number of data points added to the metric.
+}
+
+// init fills system.network.up metric with initial data.
+func (m *metricSystemNetworkUp) init() {
+	m.data.SetName("system.network.up")
+	m.data.SetDescription("Link status of physical network interface. 0 = down, 1 = up")
+	m.data.SetUnit("")
+	m.data.SetEmptyGauge()
+	m.data.Gauge().DataPoints().EnsureCapacity(m.capacity)
+}
+
+func (m *metricSystemNetworkUp) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64, deviceAttributeValue string) {
+	if !m.config.Enabled {
+		return
+	}
+	dp := m.data.Gauge().DataPoints().AppendEmpty()
+	dp.SetStartTimestamp(start)
+	dp.SetTimestamp(ts)
+	dp.SetIntValue(val)
+	dp.Attributes().PutStr("device", deviceAttributeValue)
+}
+
+// updateCapacity saves max length of data point slices that will be used for the slice capacity.
+func (m *metricSystemNetworkUp) updateCapacity() {
+	if m.data.Gauge().DataPoints().Len() > m.capacity {
+		m.capacity = m.data.Gauge().DataPoints().Len()
+	}
+}
+
+// emit appends recorded metric data to a metrics slice and prepares it for recording another set of data points.
+func (m *metricSystemNetworkUp) emit(metrics pmetric.MetricSlice) {
+	if m.config.Enabled && m.data.Gauge().DataPoints().Len() > 0 {
+		m.updateCapacity()
+		m.data.MoveTo(metrics.AppendEmpty())
+		m.init()
+	}
+}
+
+func newMetricSystemNetworkUp(cfg MetricConfig) metricSystemNetworkUp {
+	m := metricSystemNetworkUp{config: cfg}
+	if cfg.Enabled {
+		m.data = pmetric.NewMetric()
+		m.init()
+	}
+	return m
+}
+
 // MetricsBuilder provides an interface for scrapers to report metrics while taking care of all the transformations
 // required to produce metric representation defined in metadata and user config.
 type MetricsBuilder struct {
@@ -485,6 +595,7 @@ type MetricsBuilder struct {
 	metricsCapacity                   int                  // maximum observed number of metrics per resource.
 	metricsBuffer                     pmetric.Metrics      // accumulates metrics data before emitting.
 	buildInfo                         component.BuildInfo  // contains version information.
+	metricSystemNetworkBandwidthLimit metricSystemNetworkBandwidthLimit
 	metricSystemNetworkConnections    metricSystemNetworkConnections
 	metricSystemNetworkConntrackCount metricSystemNetworkConntrackCount
 	metricSystemNetworkConntrackMax   metricSystemNetworkConntrackMax
@@ -492,6 +603,7 @@ type MetricsBuilder struct {
 	metricSystemNetworkErrors         metricSystemNetworkErrors
 	metricSystemNetworkIo             metricSystemNetworkIo
 	metricSystemNetworkPackets        metricSystemNetworkPackets
+	metricSystemNetworkUp             metricSystemNetworkUp
 }
 
 // MetricBuilderOption applies changes to default metrics builder.
@@ -517,6 +629,7 @@ func NewMetricsBuilder(mbc MetricsBuilderConfig, settings scraper.Settings, opti
 		startTime:                         pcommon.NewTimestampFromTime(time.Now()),
 		metricsBuffer:                     pmetric.NewMetrics(),
 		buildInfo:                         settings.BuildInfo,
+		metricSystemNetworkBandwidthLimit: newMetricSystemNetworkBandwidthLimit(mbc.Metrics.SystemNetworkBandwidthLimit),
 		metricSystemNetworkConnections:    newMetricSystemNetworkConnections(mbc.Metrics.SystemNetworkConnections),
 		metricSystemNetworkConntrackCount: newMetricSystemNetworkConntrackCount(mbc.Metrics.SystemNetworkConntrackCount),
 		metricSystemNetworkConntrackMax:   newMetricSystemNetworkConntrackMax(mbc.Metrics.SystemNetworkConntrackMax),
@@ -524,6 +637,7 @@ func NewMetricsBuilder(mbc MetricsBuilderConfig, settings scraper.Settings, opti
 		metricSystemNetworkErrors:         newMetricSystemNetworkErrors(mbc.Metrics.SystemNetworkErrors),
 		metricSystemNetworkIo:             newMetricSystemNetworkIo(mbc.Metrics.SystemNetworkIo),
 		metricSystemNetworkPackets:        newMetricSystemNetworkPackets(mbc.Metrics.SystemNetworkPackets),
+		metricSystemNetworkUp:             newMetricSystemNetworkUp(mbc.Metrics.SystemNetworkUp),
 	}
 
 	for _, op := range options {
@@ -590,6 +704,7 @@ func (mb *MetricsBuilder) EmitForResource(options ...ResourceMetricsOption) {
 	ils.Scope().SetName(ScopeName)
 	ils.Scope().SetVersion(mb.buildInfo.Version)
 	ils.Metrics().EnsureCapacity(mb.metricsCapacity)
+	mb.metricSystemNetworkBandwidthLimit.emit(ils.Metrics())
 	mb.metricSystemNetworkConnections.emit(ils.Metrics())
 	mb.metricSystemNetworkConntrackCount.emit(ils.Metrics())
 	mb.metricSystemNetworkConntrackMax.emit(ils.Metrics())
@@ -597,6 +712,7 @@ func (mb *MetricsBuilder) EmitForResource(options ...ResourceMetricsOption) {
 	mb.metricSystemNetworkErrors.emit(ils.Metrics())
 	mb.metricSystemNetworkIo.emit(ils.Metrics())
 	mb.metricSystemNetworkPackets.emit(ils.Metrics())
+	mb.metricSystemNetworkUp.emit(ils.Metrics())
 
 	for _, op := range options {
 		op.apply(rm)
@@ -616,6 +732,11 @@ func (mb *MetricsBuilder) Emit(options ...ResourceMetricsOption) pmetric.Metrics
 	metrics := mb.metricsBuffer
 	mb.metricsBuffer = pmetric.NewMetrics()
 	return metrics
+}
+
+// RecordSystemNetworkBandwidthLimitDataPoint adds a data point to system.network.bandwidth.limit metric.
+func (mb *MetricsBuilder) RecordSystemNetworkBandwidthLimitDataPoint(ts pcommon.Timestamp, val int64, deviceAttributeValue string) {
+	mb.metricSystemNetworkBandwidthLimit.recordDataPoint(mb.startTime, ts, val, deviceAttributeValue)
 }
 
 // RecordSystemNetworkConnectionsDataPoint adds a data point to system.network.connections metric.
@@ -651,6 +772,11 @@ func (mb *MetricsBuilder) RecordSystemNetworkIoDataPoint(ts pcommon.Timestamp, v
 // RecordSystemNetworkPacketsDataPoint adds a data point to system.network.packets metric.
 func (mb *MetricsBuilder) RecordSystemNetworkPacketsDataPoint(ts pcommon.Timestamp, val int64, deviceAttributeValue string, directionAttributeValue AttributeDirection) {
 	mb.metricSystemNetworkPackets.recordDataPoint(mb.startTime, ts, val, deviceAttributeValue, directionAttributeValue.String())
+}
+
+// RecordSystemNetworkUpDataPoint adds a data point to system.network.up metric.
+func (mb *MetricsBuilder) RecordSystemNetworkUpDataPoint(ts pcommon.Timestamp, val int64, deviceAttributeValue string) {
+	mb.metricSystemNetworkUp.recordDataPoint(mb.startTime, ts, val, deviceAttributeValue)
 }
 
 // Reset resets metrics builder to its initial state. It should be used when external metrics source is restarted,
