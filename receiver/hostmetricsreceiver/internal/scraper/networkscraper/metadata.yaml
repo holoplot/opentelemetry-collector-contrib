@@ -88,3 +88,18 @@ metrics:
       value_type: int
       aggregation_temporality: cumulative
       monotonic: false
+  system.network.bandwidth.limit:
+    enabled: true
+    description: Link speed of physical network interface.
+    unit: "By/s"
+    gauge:
+      value_type: int
+      monotonic: false
+    attributes: [device]
+  system.network.up:
+    enabled: true
+    description: Link status of physical network interface. 0 = down, 1 = up
+    unit: ""
+    gauge:
+      value_type: int
+    attributes: [device]
