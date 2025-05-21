@@ -26,6 +26,11 @@ func TestMetricsBuilderConfig(t *testing.T) {
 			name: "all_set",
 			want: MetricsBuilderConfig{
 				Metrics: MetricsConfig{
+					SystemNetworkBandwidthLimit: SystemNetworkBandwidthLimitMetricConfig{
+						Enabled:             true,
+						AggregationStrategy: AggregationStrategyAvg,
+						EnabledAttributes:   []SystemNetworkBandwidthLimitMetricAttributeKey{SystemNetworkBandwidthLimitMetricAttributeKeyDevice},
+					},
 					SystemNetworkConnections: SystemNetworkConnectionsMetricConfig{
 						Enabled:             true,
 						AggregationStrategy: AggregationStrategySum,
@@ -56,6 +61,11 @@ func TestMetricsBuilderConfig(t *testing.T) {
 						Enabled:             true,
 						AggregationStrategy: AggregationStrategySum,
 						EnabledAttributes:   []SystemNetworkPacketsMetricAttributeKey{SystemNetworkPacketsMetricAttributeKeyDevice, SystemNetworkPacketsMetricAttributeKeyDirection},
+					},
+					SystemNetworkUp: SystemNetworkUpMetricConfig{
+						Enabled:             true,
+						AggregationStrategy: AggregationStrategyAvg,
+						EnabledAttributes:   []SystemNetworkUpMetricAttributeKey{SystemNetworkUpMetricAttributeKeyDevice},
 					},
 				},
 			},
@@ -64,6 +74,11 @@ func TestMetricsBuilderConfig(t *testing.T) {
 			name: "none_set",
 			want: MetricsBuilderConfig{
 				Metrics: MetricsConfig{
+					SystemNetworkBandwidthLimit: SystemNetworkBandwidthLimitMetricConfig{
+						Enabled:             false,
+						AggregationStrategy: AggregationStrategyAvg,
+						EnabledAttributes:   []SystemNetworkBandwidthLimitMetricAttributeKey{SystemNetworkBandwidthLimitMetricAttributeKeyDevice},
+					},
 					SystemNetworkConnections: SystemNetworkConnectionsMetricConfig{
 						Enabled:             false,
 						AggregationStrategy: AggregationStrategySum,
@@ -95,6 +110,11 @@ func TestMetricsBuilderConfig(t *testing.T) {
 						AggregationStrategy: AggregationStrategySum,
 						EnabledAttributes:   []SystemNetworkPacketsMetricAttributeKey{SystemNetworkPacketsMetricAttributeKeyDevice, SystemNetworkPacketsMetricAttributeKeyDirection},
 					},
+					SystemNetworkUp: SystemNetworkUpMetricConfig{
+						Enabled:             false,
+						AggregationStrategy: AggregationStrategyAvg,
+						EnabledAttributes:   []SystemNetworkUpMetricAttributeKey{SystemNetworkUpMetricAttributeKeyDevice},
+					},
 				},
 			},
 		},
@@ -102,11 +122,23 @@ func TestMetricsBuilderConfig(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := loadMetricsBuilderConfig(t, tt.name)
-			diff := cmp.Diff(tt.want, cfg, cmpopts.IgnoreUnexported(SystemNetworkConnectionsMetricConfig{}, SystemNetworkConntrackCountMetricConfig{}, SystemNetworkConntrackMaxMetricConfig{}, SystemNetworkDroppedMetricConfig{}, SystemNetworkErrorsMetricConfig{}, SystemNetworkIoMetricConfig{}, SystemNetworkPacketsMetricConfig{}))
+			diff := cmp.Diff(tt.want, cfg, cmpopts.IgnoreUnexported(SystemNetworkBandwidthLimitMetricConfig{}, SystemNetworkConnectionsMetricConfig{}, SystemNetworkConntrackCountMetricConfig{}, SystemNetworkConntrackMaxMetricConfig{}, SystemNetworkDroppedMetricConfig{}, SystemNetworkErrorsMetricConfig{}, SystemNetworkIoMetricConfig{}, SystemNetworkPacketsMetricConfig{}, SystemNetworkUpMetricConfig{}))
 			require.Emptyf(t, diff, "Config mismatch (-expected +actual):\n%s", diff)
 		})
 	}
 }
+func TestSystemNetworkBandwidthLimitMetricsConfig_Validate(t *testing.T) {
+	cfg := DefaultMetricsConfig().SystemNetworkBandwidthLimit
+	require.NoError(t, cfg.Validate())
+
+	cfg.EnabledAttributes = []SystemNetworkBandwidthLimitMetricAttributeKey{"invalid"}
+	require.ErrorContains(t, cfg.Validate(), "metric system.network.bandwidth.limit doesn't have an attribute invalid, valid attributes: [device]")
+
+	cfg = DefaultMetricsConfig().SystemNetworkBandwidthLimit
+	cfg.AggregationStrategy = "invalid"
+	require.ErrorContains(t, cfg.Validate(), "invalid aggregation strategy")
+}
+
 func TestSystemNetworkConnectionsMetricsConfig_Validate(t *testing.T) {
 	cfg := DefaultMetricsConfig().SystemNetworkConnections
 	require.NoError(t, cfg.Validate())
@@ -163,6 +195,18 @@ func TestSystemNetworkPacketsMetricsConfig_Validate(t *testing.T) {
 	require.ErrorContains(t, cfg.Validate(), "metric system.network.packets doesn't have an attribute invalid, valid attributes: [device, direction]")
 
 	cfg = DefaultMetricsConfig().SystemNetworkPackets
+	cfg.AggregationStrategy = "invalid"
+	require.ErrorContains(t, cfg.Validate(), "invalid aggregation strategy")
+}
+
+func TestSystemNetworkUpMetricsConfig_Validate(t *testing.T) {
+	cfg := DefaultMetricsConfig().SystemNetworkUp
+	require.NoError(t, cfg.Validate())
+
+	cfg.EnabledAttributes = []SystemNetworkUpMetricAttributeKey{"invalid"}
+	require.ErrorContains(t, cfg.Validate(), "metric system.network.up doesn't have an attribute invalid, valid attributes: [device]")
+
+	cfg = DefaultMetricsConfig().SystemNetworkUp
 	cfg.AggregationStrategy = "invalid"
 	require.ErrorContains(t, cfg.Validate(), "invalid aggregation strategy")
 }

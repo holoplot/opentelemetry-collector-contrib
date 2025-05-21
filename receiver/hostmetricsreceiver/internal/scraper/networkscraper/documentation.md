@@ -12,6 +12,20 @@ metrics:
     enabled: false
 ```
 
+### system.network.bandwidth.limit
+
+Link speed of physical network interface.
+
+| Unit | Metric Type | Value Type | Stability |
+| ---- | ----------- | ---------- | --------- |
+| By/s | Gauge | Int | Development |
+
+#### Attributes
+
+| Name | Description | Values | Requirement Level | Semantic Convention |
+| ---- | ----------- | ------ | ----------------- | ------------------- |
+| device | Name of the network interface. | Any Str | Recommended | - |
+
 ### system.network.connections
 
 The number of connections.
@@ -86,6 +100,20 @@ The number of packets transferred.
 | ---- | ----------- | ------ | ----------------- | ------------------- |
 | device | Name of the network interface. | Any Str | Recommended | - |
 | direction | Direction of flow of bytes/operations (receive or transmit). | Str: ``receive``, ``transmit`` | Recommended | - |
+
+### system.network.up
+
+Link status of physical network interface. 0 = down, 1 = up
+
+| Unit | Metric Type | Value Type | Stability |
+| ---- | ----------- | ---------- | --------- |
+|  | Gauge | Int | Development |
+
+#### Attributes
+
+| Name | Description | Values | Requirement Level | Semantic Convention |
+| ---- | ----------- | ------ | ----------------- | ------------------- |
+| device | Name of the network interface. | Any Str | Recommended | - |
 
 ## Optional Metrics
 

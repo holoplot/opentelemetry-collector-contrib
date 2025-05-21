@@ -58,11 +58,13 @@ func TestMetricsBuilder(t *testing.T) {
 			settings.Logger = zap.New(observedZapCore)
 			mb := NewMetricsBuilder(loadMetricsBuilderConfig(t, tt.name), settings, WithStartTime(start))
 			aggMap := make(map[string]string) // contains the aggregation strategies for each metric name
+			aggMap["system.network.bandwidth.limit"] = mb.metricSystemNetworkBandwidthLimit.config.AggregationStrategy
 			aggMap["system.network.connections"] = mb.metricSystemNetworkConnections.config.AggregationStrategy
 			aggMap["system.network.dropped"] = mb.metricSystemNetworkDropped.config.AggregationStrategy
 			aggMap["system.network.errors"] = mb.metricSystemNetworkErrors.config.AggregationStrategy
 			aggMap["system.network.io"] = mb.metricSystemNetworkIo.config.AggregationStrategy
 			aggMap["system.network.packets"] = mb.metricSystemNetworkPackets.config.AggregationStrategy
+			aggMap["system.network.up"] = mb.metricSystemNetworkUp.config.AggregationStrategy
 
 			expectedWarnings := 0
 			if tt.metricsSet != testDataSetReag {
@@ -71,6 +73,15 @@ func TestMetricsBuilder(t *testing.T) {
 
 			defaultMetricsCount := 0
 			allMetricsCount := 0
+			defaultMetricsCount++
+			allMetricsCount++
+			mb.RecordSystemNetworkBandwidthLimitDataPoint(ts, 1, "device-val")
+			if tt.name == "reaggregate_set" {
+				mb.RecordSystemNetworkBandwidthLimitDataPoint(ts, 3, "device-val-2")
+				// a different timestamp is a different key: must not merge with the above.
+				mb.RecordSystemNetworkBandwidthLimitDataPoint(ts+1, 3, "device-val-2")
+				assert.Equal(t, 2, mb.metricSystemNetworkBandwidthLimit.data.Gauge().DataPoints().Len())
+			}
 			defaultMetricsCount++
 			allMetricsCount++
 			mb.RecordSystemNetworkConnectionsDataPoint(ts, 1, AttributeProtocolTCP, "state-val")
@@ -122,15 +133,26 @@ func TestMetricsBuilder(t *testing.T) {
 				mb.RecordSystemNetworkPacketsDataPoint(ts+1, 3, "device-val-2", AttributeDirectionTransmit)
 				assert.Equal(t, 2, mb.metricSystemNetworkPackets.data.Sum().DataPoints().Len())
 			}
+			defaultMetricsCount++
+			allMetricsCount++
+			mb.RecordSystemNetworkUpDataPoint(ts, 1, "device-val")
+			if tt.name == "reaggregate_set" {
+				mb.RecordSystemNetworkUpDataPoint(ts, 3, "device-val-2")
+				// a different timestamp is a different key: must not merge with the above.
+				mb.RecordSystemNetworkUpDataPoint(ts+1, 3, "device-val-2")
+				assert.Equal(t, 2, mb.metricSystemNetworkUp.data.Gauge().DataPoints().Len())
+			}
 
 			res := pcommon.NewResource()
 			metrics := mb.Emit(WithResource(res))
 			if tt.name == "reaggregate_set" {
+				assert.Empty(t, mb.metricSystemNetworkBandwidthLimit.aggDataPoints)
 				assert.Empty(t, mb.metricSystemNetworkConnections.aggDataPoints)
 				assert.Empty(t, mb.metricSystemNetworkDropped.aggDataPoints)
 				assert.Empty(t, mb.metricSystemNetworkErrors.aggDataPoints)
 				assert.Empty(t, mb.metricSystemNetworkIo.aggDataPoints)
 				assert.Empty(t, mb.metricSystemNetworkPackets.aggDataPoints)
+				assert.Empty(t, mb.metricSystemNetworkUp.aggDataPoints)
 			}
 
 			if tt.expectEmpty {
@@ -158,6 +180,48 @@ func TestMetricsBuilder(t *testing.T) {
 			validatedMetrics := make(map[string]bool)
 			for _, mi := range allMetricsList {
 				switch mi.Name() {
+				case "system.network.bandwidth.limit":
+					if tt.name != "reaggregate_set" {
+						assert.False(t, validatedMetrics["system.network.bandwidth.limit"], "Found a duplicate in the metrics slice: system.network.bandwidth.limit")
+						validatedMetrics["system.network.bandwidth.limit"] = true
+						assert.Equal(t, pmetric.MetricTypeGauge, mi.Type())
+						assert.Equal(t, 1, mi.Gauge().DataPoints().Len())
+						assert.Equal(t, "Link speed of physical network interface.", mi.Description())
+						assert.Equal(t, "By/s", mi.Unit())
+						dp := mi.Gauge().DataPoints().At(0)
+						assert.Equal(t, start, dp.StartTimestamp())
+						assert.Equal(t, ts, dp.Timestamp())
+						assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
+						assert.Equal(t, int64(1), dp.IntValue())
+						deviceAttrVal, ok := dp.Attributes().Get("device")
+						assert.True(t, ok)
+						assert.Equal(t, "device-val", deviceAttrVal.Str())
+					} else {
+						assert.False(t, validatedMetrics["system.network.bandwidth.limit"], "Found a duplicate in the metrics slice: system.network.bandwidth.limit")
+						validatedMetrics["system.network.bandwidth.limit"] = true
+						assert.Equal(t, pmetric.MetricTypeGauge, mi.Type())
+						// 2 points: the merged one above, plus one with a different timestamp that must not have merged with it.
+						assert.Equal(t, 2, mi.Gauge().DataPoints().Len())
+						assert.Equal(t, ts+1, mi.Gauge().DataPoints().At(1).Timestamp())
+						assert.Equal(t, "Link speed of physical network interface.", mi.Description())
+						assert.Equal(t, "By/s", mi.Unit())
+						dp := mi.Gauge().DataPoints().At(0)
+						assert.Equal(t, start, dp.StartTimestamp())
+						assert.Equal(t, ts, dp.Timestamp())
+						assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
+						switch aggMap["system.network.bandwidth.limit"] {
+						case "sum":
+							assert.Equal(t, int64(4), dp.IntValue())
+						case "avg":
+							assert.Equal(t, int64(2), dp.IntValue())
+						case "min":
+							assert.Equal(t, int64(1), dp.IntValue())
+						case "max":
+							assert.Equal(t, int64(3), dp.IntValue())
+						}
+						_, ok := dp.Attributes().Get("device")
+						assert.False(t, ok)
+					}
 				case "system.network.connections":
 					if tt.name != "reaggregate_set" {
 						assert.False(t, validatedMetrics["system.network.connections"], "Found a duplicate in the metrics slice: system.network.connections")
@@ -439,6 +503,48 @@ func TestMetricsBuilder(t *testing.T) {
 						_, ok := dp.Attributes().Get("device")
 						assert.False(t, ok)
 						_, ok = dp.Attributes().Get("direction")
+						assert.False(t, ok)
+					}
+				case "system.network.up":
+					if tt.name != "reaggregate_set" {
+						assert.False(t, validatedMetrics["system.network.up"], "Found a duplicate in the metrics slice: system.network.up")
+						validatedMetrics["system.network.up"] = true
+						assert.Equal(t, pmetric.MetricTypeGauge, mi.Type())
+						assert.Equal(t, 1, mi.Gauge().DataPoints().Len())
+						assert.Equal(t, "Link status of physical network interface. 0 = down, 1 = up", mi.Description())
+						assert.Empty(t, mi.Unit())
+						dp := mi.Gauge().DataPoints().At(0)
+						assert.Equal(t, start, dp.StartTimestamp())
+						assert.Equal(t, ts, dp.Timestamp())
+						assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
+						assert.Equal(t, int64(1), dp.IntValue())
+						deviceAttrVal, ok := dp.Attributes().Get("device")
+						assert.True(t, ok)
+						assert.Equal(t, "device-val", deviceAttrVal.Str())
+					} else {
+						assert.False(t, validatedMetrics["system.network.up"], "Found a duplicate in the metrics slice: system.network.up")
+						validatedMetrics["system.network.up"] = true
+						assert.Equal(t, pmetric.MetricTypeGauge, mi.Type())
+						// 2 points: the merged one above, plus one with a different timestamp that must not have merged with it.
+						assert.Equal(t, 2, mi.Gauge().DataPoints().Len())
+						assert.Equal(t, ts+1, mi.Gauge().DataPoints().At(1).Timestamp())
+						assert.Equal(t, "Link status of physical network interface. 0 = down, 1 = up", mi.Description())
+						assert.Empty(t, mi.Unit())
+						dp := mi.Gauge().DataPoints().At(0)
+						assert.Equal(t, start, dp.StartTimestamp())
+						assert.Equal(t, ts, dp.Timestamp())
+						assert.Equal(t, pmetric.NumberDataPointValueTypeInt, dp.ValueType())
+						switch aggMap["system.network.up"] {
+						case "sum":
+							assert.Equal(t, int64(4), dp.IntValue())
+						case "avg":
+							assert.Equal(t, int64(2), dp.IntValue())
+						case "min":
+							assert.Equal(t, int64(1), dp.IntValue())
+						case "max":
+							assert.Equal(t, int64(3), dp.IntValue())
+						}
+						_, ok := dp.Attributes().Get("device")
 						assert.False(t, ok)
 					}
 				}
