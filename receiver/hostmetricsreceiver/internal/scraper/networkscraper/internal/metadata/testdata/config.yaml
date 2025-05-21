@@ -1,6 +1,8 @@
 default:
 all_set:
   metrics:
+    system.network.bandwidth.limit:
+      enabled: true
     system.network.connections:
       enabled: true
     system.network.conntrack.count:
@@ -14,9 +16,13 @@ all_set:
     system.network.io:
       enabled: true
     system.network.packets:
+      enabled: true
+    system.network.up:
       enabled: true
 none_set:
   metrics:
+    system.network.bandwidth.limit:
+      enabled: false
     system.network.connections:
       enabled: false
     system.network.conntrack.count:
@@ -30,4 +36,6 @@ none_set:
     system.network.io:
       enabled: false
     system.network.packets:
+      enabled: false
+    system.network.up:
       enabled: false
