@@ -11,6 +11,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.142.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/winperfcounters v0.142.0
 	github.com/prometheus/procfs v0.19.2
+	github.com/safchain/ethtool v0.7.0
 	github.com/shirou/gopsutil/v4 v4.25.11
 	github.com/stretchr/testify v1.11.1
 	github.com/tilinna/clock v1.1.0
