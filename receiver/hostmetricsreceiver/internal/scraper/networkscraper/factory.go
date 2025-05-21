@@ -39,5 +39,6 @@ func createMetricsScraper(
 	return scraper.NewMetrics(
 		s.scrape,
 		scraper.WithStart(s.start),
+		scraper.WithShutdown(s.shutdown),
 	)
 }
