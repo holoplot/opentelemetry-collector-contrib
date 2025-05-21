@@ -52,6 +52,7 @@ var allMetrics = []string{
 	"system.network.errors",
 	"system.network.io",
 	"system.network.packets",
+	"system.network.up",
 	"system.paging.operations",
 	"system.paging.usage",
 }
