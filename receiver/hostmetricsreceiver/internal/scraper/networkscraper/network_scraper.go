@@ -6,6 +6,7 @@ package networkscraper // import "github.com/open-telemetry/opentelemetry-collec
 import (
 	"context"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/safchain/ethtool"
@@ -215,7 +216,10 @@ func (s *networkScraper) recordNetworkEthtoolMetrics(now pcommon.Timestamp, ioCo
 
 		cmd := ethtool.EthtoolCmd{}
 		if speed, err := s.eth.CmdGet(&cmd, ioCounters.Name); err == nil {
-			s.mb.RecordSystemNetworkBandwidthLimitDataPoint(now, int64(speed), ioCounters.Name)
+			// ethtool reports MaxUint32 if it can not figure out the link speed for this interface
+			if speed != math.MaxUint32 {
+				s.mb.RecordSystemNetworkBandwidthLimitDataPoint(now, int64(speed), ioCounters.Name)
+			}
 		}
 	}
 }

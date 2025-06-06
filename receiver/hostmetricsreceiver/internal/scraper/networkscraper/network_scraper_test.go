@@ -208,16 +208,12 @@ func TestScrape(t *testing.T) {
 				expectedMetricCount += 4
 			}
 			if test.expectEthtoolMetric {
-				expectedMetricCount += 2
+				expectedMetricCount++
 			}
 			assert.Equal(t, expectedMetricCount, md.MetricCount())
 
 			metrics := md.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics()
 			idx := 0
-			if test.expectEthtoolMetric {
-				assertNetworkEthtoolMetricValid(t, metrics.At(idx), "system.network.bandwidth.limit", test.expectedStartTime)
-				idx++
-			}
 			if test.expectConnectionsMetric {
 				assertNetworkConnectionsMetricValid(t, metrics.At(idx))
 				idx++

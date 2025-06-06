@@ -47,7 +47,6 @@ var allMetrics = []string{
 	"system.disk.pending_operations",
 	"system.filesystem.usage",
 	"system.memory.usage",
-	"system.network.bandwidth.limit",
 	"system.network.connections",
 	"system.network.dropped",
 	"system.network.errors",
