@@ -218,11 +218,16 @@ func (s *networkScraper) recordNetworkEthtoolMetrics(now pcommon.Timestamp, ioCo
 		if speed, err := s.eth.CmdGet(&cmd, ioCounters.Name); err == nil {
 			// ethtool reports MaxUint32 if it can not figure out the link speed for this interface
 			if speed != math.MaxUint32 {
-				bytesPerSecond := int64(speed) * 1000 / 8
+				bytesPerSecond := mbitToBytesPerSecond(speed)
 				s.mb.RecordSystemNetworkBandwidthLimitDataPoint(now, bytesPerSecond, ioCounters.Name)
 			}
 		}
 	}
+}
+
+// mbitToBytesPerSecond converts a link speed in Mbit/s, as reported by ethtool, to bytes per second.
+func mbitToBytesPerSecond(mbit uint32) int64 {
+	return int64(mbit) * 1_000_000 / 8
 }
 
 func (s *networkScraper) filterByInterface(ioCounters []net.IOCountersStat) []net.IOCountersStat {
