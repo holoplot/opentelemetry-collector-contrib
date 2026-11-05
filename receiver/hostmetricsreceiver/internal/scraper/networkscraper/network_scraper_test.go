@@ -267,3 +267,10 @@ func assertNetworkConnectionsMetricValid(t *testing.T, metric pmetric.Metric) {
 	assert.LessOrEqual(t, 12, metric.Sum().DataPoints().Len())
 	assert.GreaterOrEqual(t, 13, metric.Sum().DataPoints().Len())
 }
+
+func TestMbitToBytesPerSecond(t *testing.T) {
+	assert.Equal(t, int64(125_000), mbitToBytesPerSecond(1))
+	assert.Equal(t, int64(12_500_000), mbitToBytesPerSecond(100))
+	assert.Equal(t, int64(125_000_000), mbitToBytesPerSecond(1000))
+	assert.Equal(t, int64(1_250_000_000), mbitToBytesPerSecond(10_000))
+}
